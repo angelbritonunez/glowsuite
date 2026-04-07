@@ -189,14 +189,17 @@ export default function Dashboard() {
         const vencidos = followups.filter((f) => f.isOverdue).length
         const totalPending = followups.length
 
-        const sales = salesRes.data || []
+        type SaleRow = { id: string; total: number | null; status: string; created_at: string }
+        type ClientStatusRow = { id: string; status: string }
+
+        const sales = (salesRes.data || []) as SaleRow[]
         const ventas_mes = sales.length
         const revenue_mes = sales.reduce(
           (sum, s) => sum + (Number(s.total) || 0),
           0
         )
 
-        const allClients = allClientsRes.data || []
+        const allClients = (allClientsRes.data || []) as ClientStatusRow[]
         const customers = allClients.filter(
           (c) => c.status === "customer"
         ).length
@@ -353,7 +356,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="p-4">
+          <div className="p-4 max-h-[calc(100vh-16rem)] overflow-y-auto">
             {loading ? (
               <>
                 <FollowupSkeleton />
