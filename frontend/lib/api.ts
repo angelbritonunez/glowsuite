@@ -24,6 +24,8 @@ export const createClient = async (data: {
   name: string
   phone: string
   skin_type: string
+  status?: string
+  email?: string
   followup_enabled?: boolean
 }) => {
   const userId = await getUserId()

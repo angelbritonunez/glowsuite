@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/api"
 
 const SKIN_TYPES = [
   "Seca",
@@ -58,33 +58,17 @@ export default function NewClientPage() {
     setError(null)
 
     try {
-      const supabase = createClient()
-      const { data: userData } = await supabase.auth.getUser()
+      const data = await createClient({
+        name: name.trim(),
+        phone: phone.replace(/\D/g, ""),
+        email: email.trim() || undefined,
+        skin_type: skinType,
+        status,
+        followup_enabled: followupEnabled,
+      })
 
-      if (!userData.user) {
-        router.push("/login")
-        return
-      }
-
-      const { data, error: insertError } = await supabase
-        .from("clients")
-        .insert([
-          {
-            name: name.trim(),
-            phone: phone.replace(/\D/g, ""),
-            email: email.trim() || null,
-            skin_type: skinType,
-            status,
-            user_id: userData.user.id,
-            followup_enabled: followupEnabled,
-          },
-        ])
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-
-      router.push(`/clients/${data.id}`)
+      const client = Array.isArray(data) ? data[0] : data
+      router.push(`/clients/${client.id}`)
     } catch (err: any) {
       console.error(err)
       setError("No se pudo guardar el cliente. Intenta de nuevo.")

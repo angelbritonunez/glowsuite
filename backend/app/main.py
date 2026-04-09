@@ -37,6 +37,8 @@ class ClientRequest(BaseModel):
     phone: str
     skin_type: str
     status: Optional[str] = "prospect"
+    email: Optional[str] = None
+    followup_enabled: Optional[bool] = True
 
 class SaleItem(BaseModel):
     product_id: str
@@ -98,7 +100,10 @@ def test_db():
 # 🔹 CLIENTS
 
 @app.post("/clients")
-def create_client(client: ClientRequest):
+def create_client(client: ClientRequest, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
     try:
         if client.skin_type not in VALID_SKIN_TYPES:
             raise HTTPException(status_code=400, detail="Tipo de piel inválido")
@@ -106,7 +111,10 @@ def create_client(client: ClientRequest):
         if client.status not in VALID_STATUS:
             raise HTTPException(status_code=400, detail="Status inválido")
 
-        res = supabase.table("clients").insert(client.dict()).execute()
+        payload = client.dict()
+        payload["user_id"] = x_user_id
+
+        res = supabase.table("clients").insert(payload).execute()
         return res.data
 
     except Exception as e:
