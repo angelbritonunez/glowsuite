@@ -76,6 +76,8 @@ export default function NewSaleContent() {
     new Date().toISOString().split("T")[0]
   )
   const [showProfit, setShowProfit] = useState(false)
+  const [paymentMode, setPaymentMode] = useState<"completo" | "parcial">("completo")
+  const [initialPayment, setInitialPayment] = useState<number | "">("")
 
   // Status
   const [loading, setLoading] = useState(false)
@@ -205,6 +207,11 @@ export default function NewSaleContent() {
     try {
       const sourceFollowupId = localStorage.getItem("source_followup_id")
 
+      const initialAmt =
+        paymentMode === "completo"
+          ? total
+          : Math.min(Number(initialPayment) || 0, total)
+
       await createSale({
         client_id: selectedClient.id,
         total,
@@ -213,6 +220,7 @@ export default function NewSaleContent() {
         source_followup_id: sourceFollowupId,
         notes: notes.trim() || undefined,
         sale_date: saleDate || undefined,
+        initial_payment: initialAmt,
         items: selectedProducts.map((p) => ({
           product_id: p.id,
           quantity: p.quantity,
@@ -620,6 +628,48 @@ export default function NewSaleContent() {
                 />
               </div>
 
+              {/* Payment mode */}
+              <div>
+                <label className={labelClass}>Pago inicial</label>
+                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-2.5">
+                  {[
+                    { key: "completo", label: "Pago completo" },
+                    { key: "parcial",  label: "Abono parcial" },
+                  ].map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPaymentMode(m.key as "completo" | "parcial")}
+                      className={`flex-1 py-2 text-xs font-medium rounded-lg transition ${
+                        paymentMode === m.key
+                          ? "bg-white shadow-sm text-[#E75480]"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMode === "parcial" && (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={total}
+                    value={initialPayment}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === "") { setInitialPayment(""); return }
+                      const n = Math.min(Number(v), total)
+                      setInitialPayment(n < 0 ? 0 : n)
+                    }}
+                    placeholder={`Monto a abonar (máx ${formatCurrency(total)})`}
+                    className={inputClass}
+                  />
+                )}
+              </div>
+
               {/* Payment type */}
               <div>
                 <label className={labelClass}>Método de pago</label>
@@ -683,6 +733,19 @@ export default function NewSaleContent() {
                     {formatCurrency(total)}
                   </span>
                 </div>
+
+                {paymentMode === "parcial" && total > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2.5 mt-1">
+                    <div className="flex justify-between text-xs text-yellow-700 mb-0.5">
+                      <span>Abono inicial</span>
+                      <span className="font-semibold">{formatCurrency(Math.min(Number(initialPayment) || 0, total))}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-yellow-700">
+                      <span>Queda pendiente</span>
+                      <span className="font-semibold">{formatCurrency(Math.max(0, total - (Math.min(Number(initialPayment) || 0, total))))}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { getReceivables } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -37,6 +38,8 @@ type DashboardData = {
   profit_mes: number
   convPct: number
   monthly_goal: number | null
+  total_owed: number
+  receivables_count: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -136,7 +139,7 @@ export default function Dashboard() {
         const now = new Date()
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-        const [profileRes, followupsRes, clientsRes, salesRes, allClientsRes] =
+        const [profileRes, followupsRes, clientsRes, salesRes, allClientsRes, receivablesRes] =
           await Promise.all([
             supabase
               .from("profiles")
@@ -165,6 +168,7 @@ export default function Dashboard() {
               .from("clients")
               .select("id, status")
               .eq("user_id", uid),
+            getReceivables(),
           ])
 
         const profile = profileRes.data
@@ -220,6 +224,8 @@ export default function Dashboard() {
           profit_mes,
           convPct,
           monthly_goal: profile?.monthly_goal ?? null,
+          total_owed: receivablesRes?.total_owed ?? 0,
+          receivables_count: receivablesRes?.count ?? 0,
         })
       } catch (err: any) {
         setError(err.message || "Error cargando datos")
@@ -373,7 +379,25 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Sección 4: Grid principal ── */}
+      {/* ── Sección 4: Cuentas por cobrar ── */}
+      {!loading && (data?.receivables_count ?? 0) > 0 && (
+        <div className="bg-white border border-orange-100 rounded-xl px-5 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+            <div>
+              <span className="text-sm font-semibold text-gray-800">Cuentas por cobrar</span>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {data!.receivables_count} {data!.receivables_count === 1 ? "venta" : "ventas"} con saldo pendiente
+              </p>
+            </div>
+          </div>
+          <span className="text-sm font-bold text-orange-500 flex-shrink-0">
+            {formatCurrency(data!.total_owed)}
+          </span>
+        </div>
+      )}
+
+      {/* ── Sección 5: Grid principal ── */}
       <div className="grid grid-cols-[1fr_340px] gap-5 items-start">
 
         {/* Columna izquierda — Seguimientos del día */}
