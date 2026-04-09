@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { getReceivables, updateFollowup } from "@/lib/api"
+import { getDashboard, updateFollowup } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -127,105 +126,31 @@ export default function Dashboard() {
   useEffect(() => {
     const init = async () => {
       try {
-        const supabase = createClient()
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-
-        if (userError || !user) throw new Error("No autenticado")
-
-        const uid = user.id
-        const now = new Date()
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-        const [profileRes, followupsRes, clientsRes, salesRes, allClientsRes, receivablesRes] =
-          await Promise.all([
-            supabase
-              .from("profiles")
-              .select("first_name, email, monthly_goal")
-              .eq("id", uid)
-              .single(),
-            supabase
-              .from("followups")
-              .select("id, type, scheduled_date, status, mensaje, clients(name, phone)")
-              .eq("user_id", uid)
-              .eq("status", "pending")
-              .order("scheduled_date", { ascending: true })
-              .limit(50),
-            supabase
-              .from("clients")
-              .select("id, name, phone, skin_type, status")
-              .eq("user_id", uid)
-              .order("created_at", { ascending: false })
-              .limit(5),
-            supabase
-              .from("sales")
-              .select("id, total, profit, status, created_at")
-              .eq("user_id", uid)
-              .gte("created_at", startOfMonth),
-            supabase
-              .from("clients")
-              .select("id, status")
-              .eq("user_id", uid),
-            getReceivables(),
-          ])
-
-        const profile = profileRes.data
-        const firstName =
-          profile?.first_name ||
-          profile?.email?.split("@")[0] ||
-          user.email?.split("@")[0] ||
-          "Consultora"
-
-        const nowDate = new Date()
-        const followups: FollowupItem[] = (followupsRes.data || []).map(
-          (f: any) => ({
-            id: f.id,
-            type: f.type,
-            scheduled_date: f.scheduled_date,
-            status: f.status,
-            mensaje: f.mensaje,
-            client_name: f.clients?.name || "Cliente",
-            client_phone: f.clients?.phone || "",
-            isOverdue: new Date(f.scheduled_date) < nowDate,
-          })
-        )
-
-        const vencidos = followups.filter((f) => f.isOverdue).length
-        const totalPending = followups.length
-
-        type SaleRow = { id: string; total: number | null; profit: number | null; status: string; created_at: string }
-        type ClientStatusRow = { id: string; status: string }
-
-        const sales = (salesRes.data || []) as SaleRow[]
-        const ventas_mes = sales.length
-        const revenue_mes = sales.reduce((sum: number, s) => sum + (Number(s.total) || 0), 0)
-        const profit_mes = sales.reduce((sum: number, s) => sum + (Number(s.profit) || 0), 0)
-
-        const allClients = (allClientsRes.data || []) as ClientStatusRow[]
-        const customers = allClients.filter(
-          (c) => c.status === "customer"
-        ).length
-        const totalClientes = allClients.length
-        const convPct =
-          totalClientes > 0
-            ? Math.round((customers / totalClientes) * 100)
-            : 0
+        const res = await getDashboard()
+        const followups: FollowupItem[] = (res.followups || []).map((f: any) => ({
+          id: f.id,
+          type: f.type,
+          scheduled_date: f.scheduled_date,
+          status: f.status,
+          mensaje: f.mensaje,
+          client_name: f.client_name,
+          client_phone: f.client_phone,
+          isOverdue: f.is_overdue,
+        }))
 
         setData({
-          firstName,
+          firstName: res.first_name,
           followups,
-          clients: (clientsRes.data as ClientItem[]) || [],
-          vencidos,
-          totalPending,
-          ventas_mes,
-          revenue_mes,
-          profit_mes,
-          convPct,
-          monthly_goal: profile?.monthly_goal ?? null,
-          total_owed: receivablesRes?.total_owed ?? 0,
-          receivables_count: receivablesRes?.count ?? 0,
+          clients: res.recent_clients || [],
+          vencidos: followups.filter((f) => f.isOverdue).length,
+          totalPending: followups.length,
+          ventas_mes: res.ventas_mes,
+          revenue_mes: res.revenue_mes,
+          profit_mes: res.profit_mes,
+          convPct: res.conv_pct,
+          monthly_goal: res.monthly_goal ?? null,
+          total_owed: res.total_owed ?? 0,
+          receivables_count: res.receivables_count ?? 0,
         })
       } catch (err: any) {
         setError(err.message || "Error cargando datos")

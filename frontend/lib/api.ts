@@ -190,6 +190,16 @@ export const getReceivables = async () => {
   return res.json()
 }
 
+// DASHBOARD
+export const getDashboard = async () => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/dashboard`, {
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error obteniendo dashboard")
+  return res.json()
+}
+
 // METRICS
 export const getMetrics = async (period: string = "month") => {
   const userId = await getUserId()
