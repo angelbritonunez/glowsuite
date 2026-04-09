@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { addPayment } from "@/lib/api"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ type SaleItem = {
 type Sale = {
   id: string
   total: number
+  amount_paid: number
   discount: number
   payment_type: string
   status: string
@@ -168,6 +170,43 @@ export default function ClientProfilePage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Abono modal
+  const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null)
+  const [abonoAmount, setAbonoAmount] = useState<string>("")
+  const [abonoType, setAbonoType] = useState<"efectivo" | "transferencia">("efectivo")
+  const [abonoNotes, setAbonoNotes] = useState("")
+  const [savingAbono, setSavingAbono] = useState(false)
+  const [abonoError, setAbonoError] = useState<string | null>(null)
+
+  const handleSaveAbono = async () => {
+    if (!abonoSaleId) return
+    const amount = parseFloat(abonoAmount)
+    if (!amount || amount <= 0) {
+      setAbonoError("Ingresa un monto válido.")
+      return
+    }
+    setSavingAbono(true)
+    setAbonoError(null)
+    try {
+      await addPayment(abonoSaleId, { amount, payment_type: abonoType, notes: abonoNotes || undefined })
+      // Refresh sales
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("sales")
+        .select("id, total, amount_paid, discount, payment_type, status, created_at, sale_date, notes, sale_items(quantity, price, product:products(name))")
+        .eq("client_id", id)
+        .order("created_at", { ascending: false })
+      setSales((data as Sale[]) || [])
+      setAbonoSaleId(null)
+      setAbonoAmount("")
+      setAbonoNotes("")
+    } catch {
+      setAbonoError("No se pudo registrar el abono.")
+    } finally {
+      setSavingAbono(false)
+    }
+  }
+
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -177,7 +216,7 @@ export default function ClientProfilePage() {
         supabase
           .from("sales")
           .select(
-            "id, total, discount, payment_type, status, created_at, sale_date, notes, sale_items(quantity, price, product:products(name))"
+            "id, total, amount_paid, discount, payment_type, status, created_at, sale_date, notes, sale_items(quantity, price, product:products(name))"
           )
           .eq("client_id", id)
           .order("created_at", { ascending: false }),
@@ -597,12 +636,16 @@ export default function ClientProfilePage() {
                           {formatDate(sale.sale_date ?? sale.created_at)}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-gray-100 text-gray-500">
+                          <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-gray-100 text-gray-500 capitalize">
                             {sale.payment_type || "Efectivo"}
                           </span>
                           {sale.status === "pagado" ? (
                             <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-green-50 text-green-700">
                               Pagado
+                            </span>
+                          ) : sale.status === "parcial" ? (
+                            <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-orange-50 text-orange-600">
+                              Abono parcial
                             </span>
                           ) : (
                             <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-yellow-50 text-yellow-700">
@@ -650,7 +693,87 @@ export default function ClientProfilePage() {
                           <span>Total</span>
                           <span>{formatCurrency(total)}</span>
                         </div>
+                        {sale.status !== "pagado" && (
+                          <>
+                            {Number(sale.amount_paid) > 0 && (
+                              <div className="flex justify-between text-xs text-gray-400">
+                                <span>Abonado</span>
+                                <span className="text-green-600">{formatCurrency(Number(sale.amount_paid))}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-xs font-semibold text-orange-600">
+                              <span>Saldo pendiente</span>
+                              <span>{formatCurrency(Math.max(0, total - Number(sale.amount_paid)))}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
+
+                      {/* Abono action */}
+                      {sale.status !== "pagado" && (
+                        <div className="mt-3">
+                          {abonoSaleId === sale.id ? (
+                            <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                              <p className="text-xs font-semibold text-gray-700">Registrar abono</p>
+                              {abonoError && (
+                                <p className="text-xs text-red-500">{abonoError}</p>
+                              )}
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                placeholder="Monto del abono"
+                                value={abonoAmount}
+                                onChange={(e) => setAbonoAmount(e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
+                              />
+                              <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
+                                {(["efectivo", "transferencia"] as const).map((t) => (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setAbonoType(t)}
+                                    className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition ${
+                                      abonoType === t ? "bg-[#E75480] text-white" : "text-gray-500 hover:text-gray-700"
+                                    }`}
+                                  >
+                                    {t}
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Nota (opcional)"
+                                value={abonoNotes}
+                                onChange={(e) => setAbonoNotes(e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleSaveAbono}
+                                  disabled={savingAbono}
+                                  className="flex-1 bg-[#E75480] text-white rounded-lg py-2 text-xs font-semibold hover:bg-[#d04070] transition disabled:opacity-50"
+                                >
+                                  {savingAbono ? "Guardando..." : "Confirmar abono"}
+                                </button>
+                                <button
+                                  onClick={() => { setAbonoSaleId(null); setAbonoAmount(""); setAbonoError(null) }}
+                                  className="text-xs text-gray-400 hover:text-gray-600 px-3"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setAbonoSaleId(sale.id); setAbonoAmount(""); setAbonoError(null) }}
+                              className="text-xs text-[#E75480] font-semibold hover:underline"
+                            >
+                              + Registrar abono
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })

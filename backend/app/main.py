@@ -52,6 +52,13 @@ class SaleRequest(BaseModel):
     source_followup_id: Optional[str] = None
     notes: Optional[str] = None
     sale_date: Optional[str] = None
+    initial_payment: Optional[float] = None
+
+class PaymentRequest(BaseModel):
+    amount: float
+    payment_type: str
+    payment_date: Optional[str] = None
+    notes: Optional[str] = None
 
 # 🔹 UTILIDADES
 
@@ -147,13 +154,25 @@ async def create_sale(sale: SaleRequest, request: Request):
         items_subtotal = sum(item.price * item.quantity for item in sale.items)
         profit = round(sale.total - items_subtotal * 0.5, 2)
 
+        # Pago inicial
+        initial = round(float(sale.initial_payment or 0), 2)
+        if initial > sale.total:
+            initial = round(sale.total, 2)
+        if initial >= sale.total and sale.total > 0:
+            initial_status = "pagado"
+        elif initial > 0:
+            initial_status = "parcial"
+        else:
+            initial_status = "pendiente"
+
         sale_data = {
             "user_id": user_id,
             "client_id": sale.client_id,
             "total": sale.total,
             "discount": sale.discount,
             "payment_type": sale.payment_type,
-            "status": "pendiente",
+            "status": initial_status,
+            "amount_paid": initial,
             "source_followup_id": sale.source_followup_id,
             "notes": sale.notes or None,
             "sale_date": sale.sale_date or None,
@@ -231,6 +250,18 @@ async def create_sale(sale: SaleRequest, request: Request):
 
         supabase.table("followups").insert(followups).execute()
 
+        # Registrar pago inicial si existe
+        if initial > 0:
+            tz = ZoneInfo("America/Santo_Domingo")
+            supabase.table("payments").insert({
+                "sale_id": created_sale["id"],
+                "user_id": user_id,
+                "amount": initial,
+                "payment_type": sale.payment_type,
+                "payment_date": sale.sale_date or datetime.now(tz).date().isoformat(),
+                "notes": "Pago inicial",
+            }).execute()
+
         return {
             "venta": created_sale,
             "items": items,
@@ -240,6 +271,148 @@ async def create_sale(sale: SaleRequest, request: Request):
     except Exception as e:
         print("ERROR BACKEND:", e)
         return {"error": str(e)}
+
+# 🔹 PAGOS
+
+@app.post("/sales/{sale_id}/payments")
+async def add_payment(sale_id: str, payment: PaymentRequest, request: Request):
+    try:
+        user_id = request.headers.get("x-user-id")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id requerido")
+
+        if payment.payment_type not in ["efectivo", "transferencia"]:
+            raise HTTPException(status_code=400, detail="Método de pago inválido")
+
+        # Verificar que la venta pertenece al usuario
+        sale_res = supabase.table("sales") \
+            .select("id, total, amount_paid, user_id") \
+            .eq("id", sale_id) \
+            .single() \
+            .execute()
+
+        if not sale_res.data:
+            raise HTTPException(status_code=404, detail="Venta no encontrada")
+
+        sale_data = sale_res.data
+        if sale_data["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Venta no pertenece al usuario")
+
+        total = float(sale_data["total"] or 0)
+        already_paid = float(sale_data["amount_paid"] or 0)
+        remaining = round(total - already_paid, 2)
+
+        if remaining <= 0:
+            return {"error": "Esta venta ya está completamente pagada"}
+
+        amount = min(round(float(payment.amount), 2), remaining)
+
+        tz = ZoneInfo("America/Santo_Domingo")
+        payment_date = payment.payment_date or datetime.now(tz).date().isoformat()
+
+        # Insertar pago
+        supabase.table("payments").insert({
+            "sale_id": sale_id,
+            "user_id": user_id,
+            "amount": amount,
+            "payment_type": payment.payment_type,
+            "payment_date": payment_date,
+            "notes": payment.notes or None,
+        }).execute()
+
+        # Actualizar amount_paid y status en sales
+        new_paid = round(already_paid + amount, 2)
+        if new_paid >= total:
+            new_status = "pagado"
+        elif new_paid > 0:
+            new_status = "parcial"
+        else:
+            new_status = "pendiente"
+
+        supabase.table("sales") \
+            .update({"amount_paid": new_paid, "status": new_status}) \
+            .eq("id", sale_id) \
+            .execute()
+
+        return {
+            "message": "Abono registrado",
+            "amount": amount,
+            "new_status": new_status,
+            "amount_paid": new_paid,
+            "balance": round(total - new_paid, 2),
+        }
+
+    except Exception as e:
+        print("ERROR PAYMENT:", e)
+        return {"error": str(e)}
+
+
+@app.get("/sales/{sale_id}/payments")
+async def get_payments(sale_id: str, request: Request):
+    try:
+        user_id = request.headers.get("x-user-id")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id requerido")
+
+        res = supabase.table("payments") \
+            .select("id, amount, payment_type, payment_date, notes, created_at") \
+            .eq("sale_id", sale_id) \
+            .eq("user_id", user_id) \
+            .order("payment_date", desc=False) \
+            .execute()
+
+        return {"payments": res.data or []}
+
+    except Exception as e:
+        print("ERROR GET PAYMENTS:", e)
+        return {"error": str(e)}
+
+
+@app.get("/receivables")
+async def get_receivables(request: Request):
+    """Cuentas por cobrar: ventas con saldo pendiente."""
+    try:
+        user_id = request.headers.get("x-user-id")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id requerido")
+
+        res = supabase.table("sales") \
+            .select("id, total, amount_paid, status, payment_type, sale_date, created_at, clients(name, phone)") \
+            .eq("user_id", user_id) \
+            .in_("status", ["pendiente", "parcial"]) \
+            .order("created_at", desc=False) \
+            .execute()
+
+        receivables = []
+        total_owed = 0.0
+
+        for s in (res.data or []):
+            total = float(s.get("total") or 0)
+            paid = float(s.get("amount_paid") or 0)
+            balance = round(total - paid, 2)
+            if balance > 0:
+                total_owed += balance
+                receivables.append({
+                    "sale_id": s["id"],
+                    "client_name": (s.get("clients") or {}).get("name", "Cliente"),
+                    "client_phone": (s.get("clients") or {}).get("phone", ""),
+                    "total": total,
+                    "amount_paid": paid,
+                    "balance": balance,
+                    "status": s.get("status"),
+                    "sale_date": s.get("sale_date") or s.get("created_at", "")[:10],
+                })
+
+        return {
+            "receivables": receivables,
+            "total_owed": round(total_owed, 2),
+            "count": len(receivables),
+        }
+
+    except Exception as e:
+        print("ERROR RECEIVABLES:", e)
+        return {"error": str(e)}
+
 
 # 🔥 FOLLOWUPS
 
