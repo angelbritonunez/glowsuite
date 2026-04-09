@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { getReceivables } from "@/lib/api"
+import { getReceivables, updateFollowup } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -242,18 +242,20 @@ export default function Dashboard() {
   )
 
   const handleSaveMessage = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from("followups").update({ mensaje: editText }).eq("id", id)
-    setData((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        followups: prev.followups.map((f) =>
-          f.id === id ? { ...f, mensaje: editText } : f
-        ),
-      }
-    })
-    setEditingId(null)
+    try {
+      await updateFollowup(id, { mensaje: editText })
+      setData((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          followups: prev.followups.map((f) =>
+            f.id === id ? { ...f, mensaje: editText } : f
+          ),
+        }
+      })
+    } finally {
+      setEditingId(null)
+    }
   }
 
   if (error) {

@@ -532,6 +532,29 @@ def complete_followup(followup_id: str):
         "data": res.data
     }
 
+@app.patch("/followups/{followup_id}")
+def update_followup(followup_id: str, body: dict, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
+    # Verify ownership via client
+    existing = supabase.table("followups").select("id, client_id").eq("id", followup_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Seguimiento no encontrado")
+
+    client_id = existing.data[0]["client_id"]
+    owner = supabase.table("clients").select("id").eq("id", client_id).eq("user_id", x_user_id).execute()
+    if not owner.data:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    allowed_fields = {"mensaje"}
+    payload = {k: v for k, v in body.items() if k in allowed_fields}
+    if not payload:
+        raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
+
+    res = supabase.table("followups").update(payload).eq("id", followup_id).execute()
+    return res.data
+
 @app.get("/metrics/followups")
 def followup_metrics(request: Request):
     try:

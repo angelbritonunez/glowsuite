@@ -126,6 +126,18 @@ export const getFollowups = async () => {
   return res.json()
 }
 
+// UPDATE FOLLOWUP
+export const updateFollowup = async (id: string, data: { mensaje: string }) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/followups/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-user-id": userId },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Error actualizando seguimiento")
+  return res.json()
+}
+
 // COMPLETE FOLLOWUP
 export const completeFollowup = async (id: string) => {
   const userId = await getUserId()
