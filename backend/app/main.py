@@ -143,6 +143,10 @@ async def create_sale(sale: SaleRequest, request: Request):
         if client_data["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Cliente no pertenece al usuario")
 
+        # Ganancia = total cobrado − 50% del precio de catálogo (costo Mary Kay)
+        items_subtotal = sum(item.price * item.quantity for item in sale.items)
+        profit = round(sale.total - items_subtotal * 0.5, 2)
+
         sale_data = {
             "user_id": user_id,
             "client_id": sale.client_id,
@@ -153,6 +157,7 @@ async def create_sale(sale: SaleRequest, request: Request):
             "source_followup_id": sale.source_followup_id,
             "notes": sale.notes or None,
             "sale_date": sale.sale_date or None,
+            "profit": profit,
         }
 
         sale_res = supabase.table("sales").insert(sale_data).execute()
@@ -394,17 +399,23 @@ def get_metrics(request: Request, period: str = "month"):
 
         # Consultas
         sales_res = supabase.table("sales") \
-            .select("id, total, payment_type, created_at, sale_date") \
+            .select("id, total, profit, payment_type, created_at, sale_date") \
             .eq("user_id", user_id) \
             .gte("created_at", start_iso) \
             .lte("created_at", end_iso) \
             .execute()
 
         prev_sales_res = supabase.table("sales") \
-            .select("id, total") \
+            .select("id, total, profit") \
             .eq("user_id", user_id) \
             .gte("created_at", prev_start_iso) \
             .lte("created_at", prev_end_iso) \
+            .execute()
+
+        profile_res = supabase.table("profiles") \
+            .select("monthly_goal") \
+            .eq("id", user_id) \
+            .single() \
             .execute()
 
         clients_res = supabase.table("clients") \
@@ -441,9 +452,12 @@ def get_metrics(request: Request, period: str = "month"):
         sales = sales_res.data or []
         prev_sales = prev_sales_res.data or []
         all_clients = clients_res.data or []
+        monthly_goal = (profile_res.data or {}).get("monthly_goal")
 
         revenue = sum(float(s.get("total") or 0) for s in sales)
         revenue_prev = sum(float(s.get("total") or 0) for s in prev_sales)
+        profit_total = sum(float(s.get("profit") or 0) for s in sales)
+        profit_prev = sum(float(s.get("profit") or 0) for s in prev_sales)
         sales_count = len(sales)
         sales_count_prev = len(prev_sales)
 
@@ -537,11 +551,14 @@ def get_metrics(request: Request, period: str = "month"):
             "summary": {
                 "revenue": round(revenue, 2),
                 "revenue_prev": round(revenue_prev, 2),
+                "profit": round(profit_total, 2),
+                "profit_prev": round(profit_prev, 2),
                 "sales_count": sales_count,
                 "sales_count_prev": sales_count_prev,
                 "new_clients": len(new_clients_res.data or []),
                 "new_clients_prev": len(prev_new_clients_res.data or []),
                 "conversion_rate": conv_rate,
+                "monthly_goal": float(monthly_goal) if monthly_goal is not None else None,
             },
             "revenue_chart": chart_points,
             "by_payment_type": by_payment,

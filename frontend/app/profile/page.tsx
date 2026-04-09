@@ -102,6 +102,12 @@ export default function ProfilePage() {
     msg: string
   } | null>(null)
 
+  // Meta mensual
+  const [monthlyGoal, setMonthlyGoal] = useState<string>("")
+  const [originalGoal, setOriginalGoal] = useState<string>("")
+  const [savingGoal, setSavingGoal] = useState(false)
+  const [goalStatus, setGoalStatus] = useState<{ type: "error" | "success"; msg: string } | null>(null)
+
   // Password
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -135,7 +141,7 @@ export default function ProfilePage() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("first_name, last_name, phone")
+        .select("first_name, last_name, phone, monthly_goal")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -144,11 +150,14 @@ export default function ProfilePage() {
       const fn = profile?.first_name || ""
       const ln = profile?.last_name || ""
       const ph = profile?.phone ? formatPhoneInput(profile.phone) : ""
+      const goal = profile?.monthly_goal ? String(profile.monthly_goal) : ""
 
       setFirstName(fn)
       setLastName(ln)
       setPhone(ph)
       setOriginalInfo({ firstName: fn, lastName: ln, phone: ph })
+      setMonthlyGoal(goal)
+      setOriginalGoal(goal)
       setLoading(false)
     }
 
@@ -201,6 +210,30 @@ export default function ProfilePage() {
       setTimeout(() => setInfoStatus(null), 3000)
     }
     setSavingInfo(false)
+  }
+
+  const handleSaveGoal = async () => {
+    setSavingGoal(true)
+    setGoalStatus(null)
+    const supabase = createClient()
+    const goalValue = monthlyGoal.trim() === "" ? null : Number(monthlyGoal)
+    if (goalValue !== null && (isNaN(goalValue) || goalValue < 0)) {
+      setGoalStatus({ type: "error", msg: "Ingresa un monto válido en pesos." })
+      setSavingGoal(false)
+      return
+    }
+    const { error } = await supabase
+      .from("profiles")
+      .update({ monthly_goal: goalValue })
+      .eq("id", userId)
+    if (error) {
+      setGoalStatus({ type: "error", msg: "No se pudo guardar. Intenta de nuevo." })
+    } else {
+      setOriginalGoal(monthlyGoal)
+      setGoalStatus({ type: "success", msg: "Meta mensual actualizada." })
+      setTimeout(() => setGoalStatus(null), 3000)
+    }
+    setSavingGoal(false)
   }
 
   const handleSavePassword = async () => {
@@ -385,6 +418,46 @@ export default function ProfilePage() {
               onClick={handleSaveInfo}
               saving={savingInfo}
               disabled={!infoIsDirty}
+            />
+          </div>
+        </div>
+
+        {/* ── Metas de negocio ── */}
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="border-b border-gray-50 px-5 py-4">
+            <span className="text-sm font-semibold text-gray-800">Metas de negocio</span>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Define tu objetivo mensual de ingresos
+            </p>
+          </div>
+          <div className="px-5 py-5 space-y-4">
+            {goalStatus && <StatusMsg type={goalStatus.type} msg={goalStatus.msg} />}
+            <div>
+              <label className={labelClass}>Meta mensual (DOP)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                  RD$
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step={500}
+                  value={monthlyGoal}
+                  onChange={(e) => setMonthlyGoal(e.target.value)}
+                  placeholder="Ej. 25000"
+                  className="w-full border border-gray-200 rounded-lg bg-gray-50 pl-10 pr-3 py-2.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
+                />
+              </div>
+              <p className="text-[11px] text-gray-300 mt-1.5">
+                Visible en tu dashboard y página de métricas como progreso mensual.
+              </p>
+            </div>
+            <SaveButton
+              onClick={handleSaveGoal}
+              saving={savingGoal}
+              disabled={monthlyGoal === originalGoal}
+              label="Guardar meta"
+              savingLabel="Guardando..."
             />
           </div>
         </div>
