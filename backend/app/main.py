@@ -37,6 +37,8 @@ class ClientRequest(BaseModel):
     phone: str
     skin_type: str
     status: Optional[str] = "prospect"
+    email: Optional[str] = None
+    followup_enabled: Optional[bool] = True
 
 class SaleItem(BaseModel):
     product_id: str
@@ -98,7 +100,10 @@ def test_db():
 # 🔹 CLIENTS
 
 @app.post("/clients")
-def create_client(client: ClientRequest):
+def create_client(client: ClientRequest, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
     try:
         if client.skin_type not in VALID_SKIN_TYPES:
             raise HTTPException(status_code=400, detail="Tipo de piel inválido")
@@ -106,7 +111,10 @@ def create_client(client: ClientRequest):
         if client.status not in VALID_STATUS:
             raise HTTPException(status_code=400, detail="Status inválido")
 
-        res = supabase.table("clients").insert(client.dict()).execute()
+        payload = client.dict()
+        payload["user_id"] = x_user_id
+
+        res = supabase.table("clients").insert(payload).execute()
         return res.data
 
     except Exception as e:
@@ -126,6 +134,46 @@ def get_clients(x_user_id: Optional[str] = Header(None)):
         "status": "success",
         "data": response.data
     }
+
+@app.patch("/clients/{client_id}")
+def update_client(client_id: str, client: ClientRequest, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
+    # Verify ownership
+    existing = supabase.table("clients").select("id").eq("id", client_id).eq("user_id", x_user_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    if client.skin_type not in VALID_SKIN_TYPES:
+        raise HTTPException(status_code=400, detail="Tipo de piel inválido")
+
+    if client.status not in VALID_STATUS:
+        raise HTTPException(status_code=400, detail="Status inválido")
+
+    payload = client.dict()
+    res = supabase.table("clients").update(payload).eq("id", client_id).eq("user_id", x_user_id).execute()
+    return res.data
+
+@app.delete("/clients/{client_id}")
+def delete_client(client_id: str, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
+    # Verify ownership
+    existing = supabase.table("clients").select("id").eq("id", client_id).eq("user_id", x_user_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    supabase.table("clients").delete().eq("id", client_id).eq("user_id", x_user_id).execute()
+    return {"status": "success"}
+
+# 🔹 PRODUCTS
+
+@app.get("/products")
+def get_products():
+    res = supabase.table("products").select("id, name, price, category").order("name").execute()
+    return {"status": "success", "data": res.data}
 
 # 🔥 SALES
 
@@ -491,6 +539,29 @@ def complete_followup(followup_id: str):
         "data": res.data
     }
 
+@app.patch("/followups/{followup_id}")
+def update_followup(followup_id: str, body: dict, x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
+    # Verify ownership via client
+    existing = supabase.table("followups").select("id, client_id").eq("id", followup_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Seguimiento no encontrado")
+
+    client_id = existing.data[0]["client_id"]
+    owner = supabase.table("clients").select("id").eq("id", client_id).eq("user_id", x_user_id).execute()
+    if not owner.data:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    allowed_fields = {"mensaje"}
+    payload = {k: v for k, v in body.items() if k in allowed_fields}
+    if not payload:
+        raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
+
+    res = supabase.table("followups").update(payload).eq("id", followup_id).execute()
+    return res.data
+
 @app.get("/metrics/followups")
 def followup_metrics(request: Request):
     try:
@@ -528,6 +599,111 @@ def followup_metrics(request: Request):
     except Exception as e:
         print("ERROR METRICS:", e)
         return {"error": str(e)}
+
+
+# 🔹 DASHBOARD
+
+@app.get("/dashboard")
+def get_dashboard(x_user_id: Optional[str] = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="Missing x-user-id")
+
+    try:
+        tz = ZoneInfo("America/Santo_Domingo")
+        now = datetime.now(tz)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        # Profile
+        profile_res = supabase.table("profiles") \
+            .select("first_name, email, monthly_goal") \
+            .eq("id", x_user_id) \
+            .single() \
+            .execute()
+        profile = profile_res.data or {}
+        first_name = profile.get("first_name") or profile.get("email", "").split("@")[0] or "Consultora"
+
+        # Pending followups with client info
+        followups_res = supabase.table("followups") \
+            .select("id, type, scheduled_date, status, mensaje, clients(name, phone)") \
+            .eq("user_id", x_user_id) \
+            .eq("status", "pending") \
+            .order("scheduled_date", desc=False) \
+            .limit(50) \
+            .execute()
+
+        now_iso = now.isoformat()
+        followups = []
+        for f in (followups_res.data or []):
+            client = f.get("clients") or {}
+            followups.append({
+                "id": f["id"],
+                "type": f["type"],
+                "scheduled_date": f["scheduled_date"],
+                "status": f["status"],
+                "mensaje": f.get("mensaje"),
+                "client_name": client.get("name", "Cliente"),
+                "client_phone": client.get("phone", ""),
+                "is_overdue": f["scheduled_date"] < now_iso,
+            })
+
+        # Recent 5 clients
+        recent_clients_res = supabase.table("clients") \
+            .select("id, name, phone, skin_type, status") \
+            .eq("user_id", x_user_id) \
+            .order("created_at", desc=True) \
+            .limit(5) \
+            .execute()
+
+        # This month's sales
+        sales_res = supabase.table("sales") \
+            .select("id, total, profit, status") \
+            .eq("user_id", x_user_id) \
+            .gte("created_at", start_of_month) \
+            .execute()
+
+        sales = sales_res.data or []
+        ventas_mes = len(sales)
+        revenue_mes = sum(float(s.get("total") or 0) for s in sales)
+        profit_mes = sum(float(s.get("profit") or 0) for s in sales)
+
+        # Conversion rate
+        all_clients_res = supabase.table("clients") \
+            .select("id, status") \
+            .eq("user_id", x_user_id) \
+            .execute()
+        all_clients = all_clients_res.data or []
+        total_clients = len(all_clients)
+        customers = sum(1 for c in all_clients if c["status"] == "customer")
+        conv_pct = round((customers / total_clients) * 100) if total_clients > 0 else 0
+
+        # Receivables
+        receivables_res = supabase.table("sales") \
+            .select("id, total, amount_paid") \
+            .eq("user_id", x_user_id) \
+            .in_("status", ["pendiente", "parcial"]) \
+            .execute()
+        receivables = receivables_res.data or []
+        total_owed = sum(
+            round(float(r.get("total") or 0) - float(r.get("amount_paid") or 0), 2)
+            for r in receivables
+        )
+
+        return {
+            "first_name": first_name,
+            "monthly_goal": profile.get("monthly_goal"),
+            "followups": followups,
+            "recent_clients": recent_clients_res.data or [],
+            "ventas_mes": ventas_mes,
+            "revenue_mes": round(revenue_mes, 2),
+            "profit_mes": round(profit_mes, 2),
+            "conv_pct": conv_pct,
+            "total_owed": round(total_owed, 2),
+            "receivables_count": len(receivables),
+        }
+
+    except Exception as e:
+        print("ERROR DASHBOARD:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # 🔹 MÉTRICAS GENERALES

@@ -24,6 +24,8 @@ export const createClient = async (data: {
   name: string
   phone: string
   skin_type: string
+  status?: string
+  email?: string
   followup_enabled?: boolean
 }) => {
   const userId = await getUserId()
@@ -42,6 +44,30 @@ export const createClient = async (data: {
 
   if (!res.ok) throw new Error("Error creando cliente")
 
+  return res.json()
+}
+
+export const updateClient = async (
+  clientId: string,
+  data: { name: string; phone: string; skin_type: string; status?: string; email?: string; followup_enabled?: boolean }
+) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/clients/${clientId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-user-id": userId },
+    body: JSON.stringify({ ...data, followup_enabled: data.followup_enabled ?? true }),
+  })
+  if (!res.ok) throw new Error("Error actualizando cliente")
+  return res.json()
+}
+
+export const deleteClient = async (clientId: string) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/clients/${clientId}`, {
+    method: "DELETE",
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error eliminando cliente")
   return res.json()
 }
 
@@ -100,6 +126,18 @@ export const getFollowups = async () => {
   return res.json()
 }
 
+// UPDATE FOLLOWUP
+export const updateFollowup = async (id: string, data: { mensaje: string }) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/followups/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-user-id": userId },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Error actualizando seguimiento")
+  return res.json()
+}
+
 // COMPLETE FOLLOWUP
 export const completeFollowup = async (id: string) => {
   const userId = await getUserId()
@@ -152,6 +190,16 @@ export const getReceivables = async () => {
   return res.json()
 }
 
+// DASHBOARD
+export const getDashboard = async () => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/dashboard`, {
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error obteniendo dashboard")
+  return res.json()
+}
+
 // METRICS
 export const getMetrics = async (period: string = "month") => {
   const userId = await getUserId()
@@ -179,5 +227,12 @@ export const getClients = async () => {
     throw new Error("Error obteniendo clientes")
   }
 
+  return res.json()
+}
+
+// PRODUCTS
+export const getProducts = async () => {
+  const res = await fetch(`${API_URL}/products`)
+  if (!res.ok) throw new Error("Error obteniendo productos")
   return res.json()
 }

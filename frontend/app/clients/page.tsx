@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { getClients } from "@/lib/api"
 import { Search } from "lucide-react"
 
 type Client = {
@@ -48,24 +48,15 @@ export default function ClientsPage() {
 
   useEffect(() => {
     const init = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      try {
+        const res = await getClients()
+        const data = res.data ?? res
+        setClients(data as Client[])
+      } catch {
         router.push("/login")
-        return
+      } finally {
+        setLoading(false)
       }
-
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, name, phone, status, skin_type, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-
-      if (!error && data) setClients(data as Client[])
-      setLoading(false)
     }
 
     init()
