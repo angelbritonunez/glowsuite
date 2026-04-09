@@ -34,7 +34,9 @@ type DashboardData = {
   totalPending: number
   ventas_mes: number
   revenue_mes: number
+  profit_mes: number
   convPct: number
+  monthly_goal: number | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,7 +140,7 @@ export default function Dashboard() {
           await Promise.all([
             supabase
               .from("profiles")
-              .select("first_name, email")
+              .select("first_name, email, monthly_goal")
               .eq("id", uid)
               .single(),
             supabase
@@ -156,7 +158,7 @@ export default function Dashboard() {
               .limit(5),
             supabase
               .from("sales")
-              .select("id, total, status, created_at")
+              .select("id, total, profit, status, created_at")
               .eq("user_id", uid)
               .gte("created_at", startOfMonth),
             supabase
@@ -189,15 +191,13 @@ export default function Dashboard() {
         const vencidos = followups.filter((f) => f.isOverdue).length
         const totalPending = followups.length
 
-        type SaleRow = { id: string; total: number | null; status: string; created_at: string }
+        type SaleRow = { id: string; total: number | null; profit: number | null; status: string; created_at: string }
         type ClientStatusRow = { id: string; status: string }
 
         const sales = (salesRes.data || []) as SaleRow[]
         const ventas_mes = sales.length
-        const revenue_mes = sales.reduce(
-          (sum: number, s) => sum + (Number(s.total) || 0),
-          0
-        )
+        const revenue_mes = sales.reduce((sum: number, s) => sum + (Number(s.total) || 0), 0)
+        const profit_mes = sales.reduce((sum: number, s) => sum + (Number(s.profit) || 0), 0)
 
         const allClients = (allClientsRes.data || []) as ClientStatusRow[]
         const customers = allClients.filter(
@@ -217,7 +217,9 @@ export default function Dashboard() {
           totalPending,
           ventas_mes,
           revenue_mes,
+          profit_mes,
           convPct,
+          monthly_goal: profile?.monthly_goal ?? null,
         })
       } catch (err: any) {
         setError(err.message || "Error cargando datos")
@@ -299,18 +301,26 @@ export default function Dashboard() {
           </div>
           <div className="px-5 py-3 text-center">
             <span className="text-white text-xl font-bold block">
-              {loading ? "—" : `${data?.convPct ?? 0}%`}
-            </span>
-            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
-              Conv
-            </span>
-          </div>
-          <div className="px-5 py-3 text-center">
-            <span className="text-white text-xl font-bold block">
               {loading ? "—" : formatCurrency(data?.revenue_mes ?? 0)}
             </span>
             <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
               Ingresos
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : formatCurrency(data?.profit_mes ?? 0)}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Ganancia
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : `${data?.convPct ?? 0}%`}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Conv
             </span>
           </div>
         </div>
@@ -324,7 +334,33 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* ── Sección 2: Alert strip ── */}
+      {/* ── Sección 2: Meta mensual ── */}
+      {!loading && (data?.monthly_goal ?? 0) > 0 && (
+        <div className="bg-white border border-gray-100 rounded-xl px-5 py-3.5">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-gray-700">Meta mensual</span>
+            <span className="text-xs text-gray-400">
+              {formatCurrency(data!.revenue_mes)} de {formatCurrency(data!.monthly_goal!)}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${Math.min(100, Math.round((data!.revenue_mes / data!.monthly_goal!) * 100))}%`,
+                backgroundColor: data!.revenue_mes >= data!.monthly_goal! ? "#10B981" : "#E75480",
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            {data!.revenue_mes >= data!.monthly_goal!
+              ? "¡Meta alcanzada este mes!"
+              : `Faltan ${formatCurrency(data!.monthly_goal! - data!.revenue_mes)} para tu meta`}
+          </p>
+        </div>
+      )}
+
+      {/* ── Sección 3: Alert strip ── */}
       {!loading && (data?.vencidos ?? 0) > 0 && (
         <div className="bg-[#FFF0F4] border border-[#FADADD] rounded-xl px-4 py-2.5 flex items-center gap-3 mb-4">
           <div className="w-2 h-2 rounded-full bg-[#E75480] animate-pulse flex-shrink-0" />
@@ -337,7 +373,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Sección 3: Grid principal ── */}
+      {/* ── Sección 4: Grid principal ── */}
       <div className="grid grid-cols-[1fr_340px] gap-5 items-start">
 
         {/* Columna izquierda — Seguimientos del día */}

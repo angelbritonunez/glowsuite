@@ -11,11 +11,14 @@ type Period = "week" | "month" | "last_month" | "year"
 type Summary = {
   revenue: number
   revenue_prev: number
+  profit: number
+  profit_prev: number
   sales_count: number
   sales_count_prev: number
   new_clients: number
   new_clients_prev: number
   conversion_rate: number
+  monthly_goal: number | null
 }
 
 type ChartPoint = { date: string; revenue: number }
@@ -292,8 +295,8 @@ function DonutChart({ items, total }: { items: PaymentItem[]; total: number }) {
 function MetricsSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[...Array(5)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 px-5 py-4">
             <div className="h-3 bg-gray-100 rounded w-20 mb-2" />
             <div className="h-7 bg-gray-100 rounded w-28 mb-2" />
@@ -403,13 +406,54 @@ export default function MetricsPage() {
         <MetricsSkeleton />
       ) : (
         <>
+          {/* ── Meta mensual (solo período "Este mes") ── */}
+          {period === "month" && s?.monthly_goal && s.monthly_goal > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-sm font-semibold text-gray-800">Meta mensual</span>
+                <span className="text-xs text-gray-400">
+                  {fmt(s.revenue)} de {fmt(s.monthly_goal)}
+                </span>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${Math.min(100, Math.round((s.revenue / s.monthly_goal) * 100))}%`,
+                    backgroundColor: s.revenue >= s.monthly_goal ? "#10B981" : "#E75480",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400">
+                  {s.revenue >= s.monthly_goal
+                    ? "¡Meta alcanzada!"
+                    : `Faltan ${fmt(s.monthly_goal - s.revenue)}`}
+                </span>
+                <span
+                  className="text-xs font-bold"
+                  style={{ color: s.revenue >= s.monthly_goal ? "#10B981" : "#E75480" }}
+                >
+                  {Math.min(100, Math.round((s.revenue / s.monthly_goal) * 100))}%
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* ── KPI cards ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <KpiCard
               label="Ingresos"
               value={fmt(s?.revenue ?? 0)}
               current={s?.revenue ?? 0}
               prev={s?.revenue_prev ?? 0}
+              sub={`vs ${prevLabel}`}
+            />
+            <KpiCard
+              label="Ganancia neta"
+              value={fmt(s?.profit ?? 0)}
+              current={s?.profit ?? 0}
+              prev={s?.profit_prev ?? 0}
               sub={`vs ${prevLabel}`}
             />
             <KpiCard
