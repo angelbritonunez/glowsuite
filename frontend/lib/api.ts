@@ -24,6 +24,7 @@ export const createClient = async (data: {
   name: string
   phone: string
   skin_type: string
+  followup_enabled?: boolean
 }) => {
   const userId = await getUserId()
 
@@ -33,7 +34,10 @@ export const createClient = async (data: {
       "Content-Type": "application/json",
       "x-user-id": userId,
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      followup_enabled: data.followup_enabled ?? true,
+    }),
   })
 
   if (!res.ok) throw new Error("Error creando cliente")
@@ -47,6 +51,10 @@ export const createSale = async (data: {
   total: number
   discount: number
   payment_type: string
+  source_followup_id?: string | null
+  notes?: string
+  sale_date?: string
+  initial_payment?: number
   items: {
     product_id: string
     quantity: number
@@ -110,6 +118,51 @@ export const completeFollowup = async (id: string) => {
   return res.json()
 }
 
+
+// PAYMENTS
+export const addPayment = async (
+  saleId: string,
+  data: { amount: number; payment_type: string; payment_date?: string; notes?: string }
+) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/sales/${saleId}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": userId },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Error registrando abono")
+  return res.json()
+}
+
+export const getSalePayments = async (saleId: string) => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/sales/${saleId}/payments`, {
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error obteniendo pagos")
+  return res.json()
+}
+
+export const getReceivables = async () => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/receivables`, {
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error obteniendo cuentas por cobrar")
+  return res.json()
+}
+
+// METRICS
+export const getMetrics = async (period: string = "month") => {
+  const userId = await getUserId()
+
+  const res = await fetch(`${API_URL}/metrics?period=${period}`, {
+    headers: { "x-user-id": userId },
+  })
+
+  if (!res.ok) throw new Error("Error obteniendo métricas")
+  return res.json()
+}
 
 export const getClients = async () => {
   const userId = await getUserId()

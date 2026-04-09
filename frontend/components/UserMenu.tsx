@@ -15,8 +15,7 @@ export default function UserMenu() {
 
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const name = "Angel Brito"
-  const initial = name.charAt(0)
+ const [initial, setInitial] = useState("?")
 
   // ✅ CERRAR AL HACER CLICK FUERA
   useEffect(() => {
@@ -32,6 +31,30 @@ export default function UserMenu() {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
+
+  useEffect(() => {
+  const loadUserInitial = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name")
+      .eq("id", user.id)
+      .single()
+
+    if (profile?.first_name) {
+      setInitial(profile.first_name.charAt(0).toUpperCase())
+    } else if (user.email) {
+      setInitial(user.email.charAt(0).toUpperCase())
+    }
+  }
+
+  loadUserInitial()
+}, [])
 
   const handleLogout = async () => {
     setLoading(true)
@@ -63,7 +86,7 @@ export default function UserMenu() {
         <div className="absolute right-0 mt-2 w-52 bg-white border rounded-xl shadow-lg p-2 z-50 animate-in fade-in zoom-in-95">
 
           <Link
-            href="/perfil"
+            href="/profile"
             onClick={() => setOpen(false)} // ✅ cerrar al navegar
             className="block px-3 py-2 rounded-lg hover:bg-gray-100 text-sm transition"
           >

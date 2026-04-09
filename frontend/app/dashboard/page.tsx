@@ -1,464 +1,648 @@
-  "use client"
+"use client"
 
-  import { useEffect, useMemo, useState } from "react"
-  import { createClient } from "@/lib/supabase"
-  import { useRouter } from "next/navigation"
-  import { getFollowups, completeFollowup } from "@/lib/api"
-  import { APP_VERSION } from "@/src/config/version"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { getReceivables } from "@/lib/api"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 
-  type Profile = {
-    first_name?: string | null
-  }
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-  type FollowupItem = {
-    id: string
-    mensaje: string | null
-    type: string | null
-    scheduled_date: string
-    client_name: string
-    phone: string
-  }
-
-  type ClientItem = {
-    id: string
-    name: string
-    phone: string
-    skin_type?: string | null
-    status?: string, 
-    created_at?: string
-  }
-
-  export default function Dashboard() {
-    const router = useRouter()
-
-    const [profile, setProfile] = useState<Profile | null>(null)
-    const [todayFollowups, setTodayFollowups] = useState<FollowupItem[]>([])
-    const [overdueFollowups, setOverdueFollowups] = useState<FollowupItem[]>([])
-  const [upcomingFollowups, setUpcomingFollowups] = useState<FollowupItem[]>([])
-    const [clients, setClients] = useState<ClientItem[]>([])
-    const [loading, setLoading] = useState(true)
-
-    const openWhatsApp = (phone: string, message: string) => {
-      const cleanPhone = (phone || "").replace(/\D/g, "")
-      if (!cleanPhone) return
-      const url = `https://wa.me/1${cleanPhone}?text=${encodeURIComponent(message)}`
-      window.open(url, "_blank")
-    }
-
-    const formatPhone = (phone: string) => {
-      const digits = (phone || "").replace(/\D/g, "").slice(0, 10)
-
-      const part1 = digits.slice(0, 3)
-      const part2 = digits.slice(3, 6)
-      const part3 = digits.slice(6, 10)
-
-      if (!digits) return "Sin teléfono"
-      if (digits.length <= 3) return `(${part1}`
-      if (digits.length <= 6) return `(${part1}) ${part2}`
-      return `(${part1}) ${part2}-${part3}`
-    }
-
-    const getFollowupLabel = (date: string) => {
-      const today = new Date()
-      const target = new Date(date)
-
-      const diff = Math.round(
-        (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-      )
-
-      if (diff <= 2) return "2 días"
-      if (diff <= 14) return "2 semanas"
-      return "2 meses"
-    }
-
-    const getMessage = (f: FollowupItem) => {
-      if (f.mensaje && f.mensaje.trim() !== "") return f.mensaje
-
-      const name = f.client_name || "cliente"
-      const label = getFollowupLabel(f.scheduled_date)
-
-      if (label === "2 días") {
-        return `Hola ${name}, ¿cómo te fue con el producto que compraste?`
-      }
-
-      if (label === "2 semanas") {
-        return `Hola ${name}, paso por aquí para saber cómo te ha ido con el producto.`
-      }
-
-      return `Hola ${name}, te escribo para darte seguimiento y ver si necesitas algo más.`
-    }
-
-    const formatShortDate = (date: string) => {
-      const value = new Date(date)
-      if (Number.isNaN(value.getTime())) return "Fecha no disponible"
-
-      return value.toLocaleDateString("es-DO", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    }
-
-    useEffect(() => {
-      const supabase = createClient()
-      let isMounted = true
-
-      const init = async () => {
-        try {
-          const {
-            data: { user },
-            error: userError,
-          } = await supabase.auth.getUser()
-
-          if (!isMounted) return
-
-          if (userError || !user) {
-            setLoading(false)
-            router.push("/login")
-            return
-          }
-
-          const userId = user.id
-
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("first_name")
-            .eq("id", userId)
-            .maybeSingle()
-
-          if (profileError) {
-            console.error("PROFILE ERROR:", profileError)
-          }
-
-          if (isMounted) {
-            setProfile(profileData || null)
-          }
-
-          const today = new Date()
-          const start = new Date(today)
-          start.setHours(0, 0, 0, 0)
-
-          const end = new Date(today)
-          end.setHours(23, 59, 59, 999)
-
-const data = await getFollowups()
-
-const mapItem = (f: any) => ({
-  id: f.id,
-  mensaje: f.mensaje,
-  type: f.type,
-  scheduled_date: f.scheduled_date,
-  client_name: f.client_name,
-  phone: f.phone,
-})
-
-if (isMounted) {
-  setTodayFollowups((data.today || []).map(mapItem))
-  setOverdueFollowups((data.overdue || []).map(mapItem))
-  setUpcomingFollowups((data.upcoming || []).map(mapItem))
+type FollowupItem = {
+  id: string
+  type: "day2" | "week2" | "month2"
+  scheduled_date: string
+  status: string
+  mensaje: string | null
+  client_name: string
+  client_phone: string
+  isOverdue: boolean
 }
 
-          const { data: clientsData, error: clientsError } = await supabase
-            .from("clients")
-            .select("*")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false })
-            .limit(6)
+type ClientItem = {
+  id: string
+  name: string
+  phone: string
+  skin_type?: string | null
+  status: string
+}
 
-          if (clientsError) {
-            console.error("CLIENTS ERROR:", clientsError)
-          }
+type DashboardData = {
+  firstName: string
+  followups: FollowupItem[]
+  clients: ClientItem[]
+  vencidos: number
+  totalPending: number
+  ventas_mes: number
+  revenue_mes: number
+  profit_mes: number
+  convPct: number
+  monthly_goal: number | null
+  total_owed: number
+  receivables_count: number
+}
 
-          if (isMounted) {
-            setClients((clientsData as ClientItem[]) || [])
-            setLoading(false)
-          }
-        } catch (error) {
-          console.error("ERROR GENERAL DASHBOARD:", error)
-          if (isMounted) setLoading(false)
-        }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatPhone(phone: string): string {
+  const digits = (phone || "").replace(/\D/g, "").slice(0, 10)
+  if (digits.length < 10) return phone || "Sin teléfono"
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("es-DO", {
+    style: "currency",
+    currency: "DOP",
+    minimumFractionDigits: 0,
+  }).format(amount)
+}
+
+function buildWAUrl(phone: string, msg: string): string {
+  let digits = (phone || "").replace(/\D/g, "")
+  if (digits && !digits.startsWith("1")) digits = "1" + digits
+  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+}
+
+function formatBriefDate(): string {
+  return new Intl.DateTimeFormat("es-DO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Santo_Domingo",
+  }).format(new Date())
+}
+
+function buildVersion(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, "0")
+  const d = String(now.getDate()).padStart(2, "0")
+  return `v${y}.${m}.${d}`
+}
+
+// ── Skeleton sub-components ───────────────────────────────────────────────────
+
+function FollowupSkeleton() {
+  return (
+    <div className="border border-gray-100 rounded-xl p-4 mb-3 animate-pulse">
+      <div className="flex justify-between mb-2">
+        <div className="h-4 bg-gray-100 rounded w-32" />
+        <div className="h-4 bg-gray-100 rounded w-16" />
+      </div>
+      <div className="h-3 bg-gray-100 rounded w-full mb-1" />
+      <div className="h-3 bg-gray-100 rounded w-3/4 mb-3" />
+      <div className="flex gap-2">
+        <div className="h-8 bg-gray-100 rounded-lg flex-1" />
+        <div className="h-8 bg-gray-100 rounded-lg w-20" />
+      </div>
+    </div>
+  )
+}
+
+function ClientSkeleton() {
+  return (
+    <div className="px-5 py-3.5 border-b border-gray-50 animate-pulse">
+      <div className="flex justify-between mb-1">
+        <div className="h-4 bg-gray-100 rounded w-28" />
+        <div className="h-4 bg-gray-100 rounded w-16" />
+      </div>
+      <div className="h-3 bg-gray-100 rounded w-24 mb-1.5" />
+      <div className="h-5 bg-gray-100 rounded-full w-16" />
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function Dashboard() {
+  const router = useRouter()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError || !user) throw new Error("No autenticado")
+
+        const uid = user.id
+        const now = new Date()
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+        const [profileRes, followupsRes, clientsRes, salesRes, allClientsRes, receivablesRes] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("first_name, email, monthly_goal")
+              .eq("id", uid)
+              .single(),
+            supabase
+              .from("followups")
+              .select("id, type, scheduled_date, status, mensaje, clients(name, phone)")
+              .eq("user_id", uid)
+              .eq("status", "pending")
+              .order("scheduled_date", { ascending: true })
+              .limit(50),
+            supabase
+              .from("clients")
+              .select("id, name, phone, skin_type, status")
+              .eq("user_id", uid)
+              .order("created_at", { ascending: false })
+              .limit(5),
+            supabase
+              .from("sales")
+              .select("id, total, profit, status, created_at")
+              .eq("user_id", uid)
+              .gte("created_at", startOfMonth),
+            supabase
+              .from("clients")
+              .select("id, status")
+              .eq("user_id", uid),
+            getReceivables(),
+          ])
+
+        const profile = profileRes.data
+        const firstName =
+          profile?.first_name ||
+          profile?.email?.split("@")[0] ||
+          user.email?.split("@")[0] ||
+          "Consultora"
+
+        const nowDate = new Date()
+        const followups: FollowupItem[] = (followupsRes.data || []).map(
+          (f: any) => ({
+            id: f.id,
+            type: f.type,
+            scheduled_date: f.scheduled_date,
+            status: f.status,
+            mensaje: f.mensaje,
+            client_name: f.clients?.name || "Cliente",
+            client_phone: f.clients?.phone || "",
+            isOverdue: new Date(f.scheduled_date) < nowDate,
+          })
+        )
+
+        const vencidos = followups.filter((f) => f.isOverdue).length
+        const totalPending = followups.length
+
+        type SaleRow = { id: string; total: number | null; profit: number | null; status: string; created_at: string }
+        type ClientStatusRow = { id: string; status: string }
+
+        const sales = (salesRes.data || []) as SaleRow[]
+        const ventas_mes = sales.length
+        const revenue_mes = sales.reduce((sum: number, s) => sum + (Number(s.total) || 0), 0)
+        const profit_mes = sales.reduce((sum: number, s) => sum + (Number(s.profit) || 0), 0)
+
+        const allClients = (allClientsRes.data || []) as ClientStatusRow[]
+        const customers = allClients.filter(
+          (c) => c.status === "customer"
+        ).length
+        const totalClientes = allClients.length
+        const convPct =
+          totalClientes > 0
+            ? Math.round((customers / totalClientes) * 100)
+            : 0
+
+        setData({
+          firstName,
+          followups,
+          clients: (clientsRes.data as ClientItem[]) || [],
+          vencidos,
+          totalPending,
+          ventas_mes,
+          revenue_mes,
+          profit_mes,
+          convPct,
+          monthly_goal: profile?.monthly_goal ?? null,
+          total_owed: receivablesRes?.total_owed ?? 0,
+          receivables_count: receivablesRes?.count ?? 0,
+        })
+      } catch (err: any) {
+        setError(err.message || "Error cargando datos")
+      } finally {
+        setLoading(false)
       }
+    }
 
-      init()
+    init()
+  }, [])
 
-      return () => {
-        isMounted = false
-      }
-    }, [router])
+  const visibleFollowups = (data?.followups || []).filter(
+    (f) => !dismissed.has(f.id)
+  )
 
-    const stats = useMemo(() => {
-      const totalClients = clients.length
-     const pendingFollowups =
-  todayFollowups.length +
-  overdueFollowups.length +
-  upcomingFollowups.length
-      const clientsWithPhone = clients.filter((c) => (c.phone || "").trim() !== "").length
-
+  const handleSaveMessage = async (id: string) => {
+    const supabase = createClient()
+    await supabase.from("followups").update({ mensaje: editText }).eq("id", id)
+    setData((prev) => {
+      if (!prev) return prev
       return {
-        totalClients,
-        pendingFollowups,
-        clientsWithPhone,
+        ...prev,
+        followups: prev.followups.map((f) =>
+          f.id === id ? { ...f, mensaje: editText } : f
+        ),
       }
-    }, [clients, todayFollowups, overdueFollowups, upcomingFollowups])
+    })
+    setEditingId(null)
+  }
 
-    const markAsSent = async (id: string) => {
-      const supabase = createClient()
-
-      const { error } = await supabase
-        .from("followups")
-        .update({ status: "sent" })
-        .eq("id", id)
-
-      if (error) {
-        console.error("Error actualizando followup:", error)
-        return
-      }
-
-      setTodayFollowups((prev) => prev.filter((f) => f.id !== id))
-setOverdueFollowups((prev) => prev.filter((f) => f.id !== id))
-setUpcomingFollowups((prev) => prev.filter((f) => f.id !== id))
-    }
-
-    if (loading) {
-      return (
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-gray-200 bg-white p-6">
-            <div className="h-7 w-56 animate-pulse rounded bg-gray-200" />
-            <div className="mt-3 h-4 w-80 animate-pulse rounded bg-gray-100" />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-gray-200 bg-white p-5"
-              >
-                <div className="h-4 w-24 animate-pulse rounded bg-gray-100" />
-                <div className="mt-4 h-8 w-16 animate-pulse rounded bg-gray-200" />
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6">
-              <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
-              <div className="mt-6 space-y-4">
-                {[1, 2].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl border border-gray-100 p-5"
-                  >
-                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                    <div className="mt-3 h-3 w-24 animate-pulse rounded bg-gray-100" />
-                    <div className="mt-4 h-16 animate-pulse rounded bg-gray-50" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-gray-200 bg-white p-6">
-              <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
-              <div className="mt-6 space-y-4">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl border border-gray-100 p-4"
-                  >
-                    <div className="h-4 w-36 animate-pulse rounded bg-gray-200" />
-                    <div className="mt-3 h-3 w-24 animate-pulse rounded bg-gray-100" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
+  if (error) {
     return (
-      <div className="space-y-8">
-        <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">
-                Bienvenida, {profile?.first_name || "Consultora"}
-              </h1>
-              <p className="text-sm font-medium text-[#E75480]">Nunca es demasiado tarde para ser lo que podrías haber sido.</p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => router.push("/clients/new")}
-                className="rounded-2xl bg-[#E75480] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
-              >
-              + Nuevo cliente
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Seguimientos del día
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Prioriza los contactos que debes atender hoy.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {todayFollowups.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-8 text-center">
-                  <p className="text-sm font-medium text-gray-700">
-                    No hay seguimientos pendientes para hoy
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Cuando tengas tareas programadas aparecerán aquí.
-                  </p>
-                </div>
-              ) : (
-                todayFollowups.map((f) => (
-                  <div
-                    key={f.id}
-                    className="rounded-2xl border border-gray-200 p-5 transition hover:border-gray-300"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold text-gray-900">
-                            {f.client_name}
-                          </p>
-                          <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-[#E75480]">
-                            {getFollowupLabel(f.scheduled_date)}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                          <span>{f.type || "Seguimiento"}</span>
-                          <span>•</span>
-                          <span>{formatShortDate(f.scheduled_date)}</span>
-                        </div>
-
-                        <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700">
-                          {getMessage(f)}
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          onClick={() => {
-                            openWhatsApp(f.phone, getMessage(f))
-                            markAsSent(f.id)
-                          }}
-                          className="rounded-xl bg-[#E75480] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                        >
-                          Enviar
-                        </button>
-
-                        <button
-                          onClick={() => markAsSent(f.id)}
-                          className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                        >
-                          Marcar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Clientes recientes
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Acceso rápido a tus contactos más recientes.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => router.push("/clients")}
-                  className="text-sm font-medium text-[#E75480] transition hover:opacity-80"
-                >
-                  Ver todos
-                </button>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                {clients.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-8 text-center">
-                    <p className="text-sm font-medium text-gray-700">
-                      No tienes clientes registrados
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Agrega tu primer cliente para comenzar a gestionar ventas y
-                      seguimientos.
-                    </p>
-                  </div>
-                ) : (
-                  clients.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => router.push(`/clients/${c.id}`)}
-                      className="block w-full rounded-2xl border border-gray-200 p-4 text-left transition hover:border-gray-300 hover:bg-gray-50"
-                    >
-<div className="flex items-start justify-between gap-3">
-
-  <div className="min-w-0">
-    <p className="truncate text-sm font-semibold text-gray-900">
-      {c.name}
-    </p>
-
-    <p className="mt-1 text-sm text-gray-500">
-      {formatPhone(c.phone)}
-    </p>
-
-    {/* 🔥 STATUS */}
-    <span
-      className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full ${
-        c.status === "customer"
-          ? "bg-pink-100 text-[#E75480]"
-          : c.status === "later"
-          ? "bg-yellow-100 text-yellow-700"
-          : "bg-gray-100 text-gray-600"
-      }`}
-    >
-      {c.status === "customer"
-        ? "Cliente"
-        : c.status === "later"
-        ? "Más adelante"
-        : "Prospecto"}
-    </span>
-  </div>
-
-  <div className="flex flex-col items-end gap-2">
-    {c.skin_type && (
-      <span className="shrink-0 rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-[#E75480]">
-        {c.skin_type}
-      </span>
-    )}
-  </div>
-
-</div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-        <div className="fixed bottom-2 right-4 text-xs text-gray-400">
-  v{APP_VERSION}
-</div>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm text-gray-500">{error}</p>
       </div>
     )
   }
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Sección 1: Hero Morning Brief ── */}
+      <div className="bg-[#E75480] rounded-2xl relative overflow-hidden p-6 mb-4 flex items-center justify-between gap-4 flex-wrap">
+        {/* Decorative circles */}
+        <div className="absolute top-[-40px] right-[-40px] w-40 h-40 bg-white/10 rounded-full" />
+        <div className="absolute bottom-[-30px] left-[40%] w-24 h-24 bg-white/10 rounded-full" />
+        <div className="absolute top-[10px] left-[-20px] w-20 h-20 bg-white/10 rounded-full" />
+
+        {/* Left: greeting */}
+        <div className="relative z-10">
+          <p className="text-white/70 text-xs uppercase tracking-widest">
+            {formatBriefDate()}
+          </p>
+          <h1 className="text-white text-2xl font-bold tracking-tight mt-1">
+            Bienvenida, {loading ? "..." : (data?.firstName || "Consultora")}
+          </h1>
+          <p className="text-white/75 text-sm mt-1">
+            Nunca es demasiado tarde para ser lo que podrías haber sido.
+          </p>
+        </div>
+
+        {/* Center: stats */}
+        <div className="relative z-10 bg-white/15 rounded-2xl flex divide-x divide-white/20">
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : (data?.vencidos ?? 0)}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Msgs hoy
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : (data?.ventas_mes ?? 0)}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Ventas
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : formatCurrency(data?.revenue_mes ?? 0)}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Ingresos
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : formatCurrency(data?.profit_mes ?? 0)}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Ganancia
+            </span>
+          </div>
+          <div className="px-5 py-3 text-center">
+            <span className="text-white text-xl font-bold block">
+              {loading ? "—" : `${data?.convPct ?? 0}%`}
+            </span>
+            <span className="text-white/70 text-xs uppercase tracking-wider block mt-0.5">
+              Conv
+            </span>
+          </div>
+        </div>
+
+        {/* Right: CTA */}
+        <Link
+          href="/clients/new"
+          className="relative z-10 bg-white text-[#E75480] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-pink-50 transition whitespace-nowrap"
+        >
+          + Nuevo cliente
+        </Link>
+      </div>
+
+      {/* ── Sección 2: Meta mensual ── */}
+      {!loading && (data?.monthly_goal ?? 0) > 0 && (
+        <div className="bg-white border border-gray-100 rounded-xl px-5 py-3.5">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-gray-700">Meta mensual</span>
+            <span className="text-xs text-gray-400">
+              {formatCurrency(data!.revenue_mes)} de {formatCurrency(data!.monthly_goal!)}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${Math.min(100, Math.round((data!.revenue_mes / data!.monthly_goal!) * 100))}%`,
+                backgroundColor: data!.revenue_mes >= data!.monthly_goal! ? "#10B981" : "#E75480",
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            {data!.revenue_mes >= data!.monthly_goal!
+              ? "¡Meta alcanzada este mes!"
+              : `Faltan ${formatCurrency(data!.monthly_goal! - data!.revenue_mes)} para tu meta`}
+          </p>
+        </div>
+      )}
+
+      {/* ── Sección 3: Alert strip ── */}
+      {!loading && (data?.vencidos ?? 0) > 0 && (
+        <div className="bg-[#FFF0F4] border border-[#FADADD] rounded-xl px-4 py-2.5 flex items-center gap-3 mb-4">
+          <div className="w-2 h-2 rounded-full bg-[#E75480] animate-pulse flex-shrink-0" />
+          <span className="text-[#C0395E] text-sm font-medium">
+            Tienes {data!.vencidos} clientes para contactar hoy
+          </span>
+          <span className="ml-auto bg-[#E75480] text-white rounded-full text-xs font-semibold px-3 py-0.5">
+            {data!.totalPending} pendientes
+          </span>
+        </div>
+      )}
+
+      {/* ── Sección 4: Cuentas por cobrar ── */}
+      {!loading && (data?.receivables_count ?? 0) > 0 && (
+        <div className="bg-white border border-orange-100 rounded-xl px-5 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+            <div>
+              <span className="text-sm font-semibold text-gray-800">Cuentas por cobrar</span>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {data!.receivables_count} {data!.receivables_count === 1 ? "venta" : "ventas"} con saldo pendiente
+              </p>
+            </div>
+          </div>
+          <span className="text-sm font-bold text-orange-500 flex-shrink-0">
+            {formatCurrency(data!.total_owed)}
+          </span>
+        </div>
+      )}
+
+      {/* ── Sección 5: Grid principal ── */}
+      <div className="grid grid-cols-[1fr_340px] gap-5 items-start">
+
+        {/* Columna izquierda — Seguimientos del día */}
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="border-b border-gray-50 px-5 py-4">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-semibold text-gray-800">
+                Seguimientos del día
+              </span>
+              <span className="bg-[#E75480] text-white rounded-full text-xs font-semibold px-2.5 py-0.5">
+                {loading ? "—" : visibleFollowups.length}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">
+              Prioriza los contactos que debes atender hoy
+            </p>
+          </div>
+
+          <div className="p-4 max-h-[calc(100vh-16rem)] overflow-y-auto">
+            {loading ? (
+              <>
+                <FollowupSkeleton />
+                <FollowupSkeleton />
+                <FollowupSkeleton />
+              </>
+            ) : visibleFollowups.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-sm">
+                ¡Todo al día! No hay seguimientos pendientes.
+              </div>
+            ) : (
+              visibleFollowups.map((fup) => {
+                const isEditing = editingId === fup.id
+                const message = fup.mensaje || ""
+
+                const typeLabel =
+                  fup.type === "day2"
+                    ? "2 días"
+                    : fup.type === "week2"
+                    ? "2 semanas"
+                    : "2 meses"
+
+                const typeBadgeClass =
+                  fup.type === "day2"
+                    ? "bg-[#FFF0F4] text-[#C0395E]"
+                    : fup.type === "week2"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "bg-green-50 text-green-700"
+
+                const dateFormatted = new Intl.DateTimeFormat("es-DO", {
+                  day: "2-digit",
+                  month: "short",
+                  timeZone: "America/Santo_Domingo",
+                }).format(new Date(fup.scheduled_date))
+
+                return (
+                  <div
+                    key={fup.id}
+                    className="border border-gray-100 rounded-xl p-4 mb-3 bg-white"
+                  >
+                    {/* Row 1: name + badges + phone */}
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <div>
+                        <span className="font-semibold text-sm text-gray-800">
+                          {fup.client_name}
+                        </span>
+                        {fup.client_phone && (
+                          <span className="text-gray-400 text-xs ml-1">
+                            · {formatPhone(fup.client_phone)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5 items-center flex-wrap justify-end">
+                        <span
+                          className={`rounded-full text-xs font-medium px-2.5 py-0.5 ${typeBadgeClass}`}
+                        >
+                          {typeLabel}
+                        </span>
+                        {fup.isOverdue && (
+                          <span className="bg-[#E75480] text-white rounded-full text-xs font-medium px-2.5 py-0.5">
+                            Vencido
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-300">
+                          {dateFormatted}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: message or textarea */}
+                    {isEditing ? (
+                      <>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg p-2.5 text-xs text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#E75480] resize-none min-h-16 mb-2"
+                          autoFocus
+                        />
+                        <div className="flex gap-2 mb-2">
+                          <button
+                            onClick={() => handleSaveMessage(fup.id)}
+                            className="bg-[#E75480] text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-[#d04070] transition"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="text-gray-400 text-xs hover:text-gray-600 px-2 py-1.5"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-500 leading-relaxed my-2">
+                          {message ? (
+                            message
+                          ) : (
+                            <span className="text-gray-300 italic">
+                              Sin mensaje — editar antes de enviar
+                            </span>
+                          )}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setEditingId(fup.id)
+                            setEditText(fup.mensaje || "")
+                          }}
+                          className="text-xs text-[#E75480] font-medium hover:underline block mb-2 bg-transparent border-none p-0 cursor-pointer"
+                        >
+                          Editar mensaje
+                        </button>
+                      </>
+                    )}
+
+                    {/* Row 3: actions */}
+                    <div className="flex gap-2">
+                      <a
+                        href={buildWAUrl(fup.client_phone, message)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-[#E75480] text-white rounded-lg py-2 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#d04070] transition"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.989.58 3.842 1.583 5.405L2.046 22l4.729-1.518A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.182a8.18 8.18 0 0 1-4.17-1.14l-.299-.177-3.093.994.957-3.026-.198-.316A8.143 8.143 0 0 1 3.818 12c0-4.511 3.671-8.182 8.182-8.182 4.51 0 8.182 3.671 8.182 8.182 0 4.51-3.671 8.182-8.182 8.182z" />
+                        </svg>
+                        Enviar por WhatsApp
+                      </a>
+                      <button
+                        onClick={() =>
+                          setDismissed((prev) => new Set([...prev, fup.id]))
+                        }
+                        className="bg-gray-50 text-gray-500 border border-gray-200 rounded-lg py-2 px-3 text-xs font-medium hover:bg-gray-100 transition"
+                      >
+                        Descartar
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Columna derecha — Clientes recientes */}
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="border-b border-gray-50 px-5 py-4 flex justify-between items-start">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">
+                Clientes recientes
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Acceso rápido a tus contactos más recientes
+              </p>
+            </div>
+            <Link
+              href="/clients"
+              className="text-xs text-[#E75480] font-medium hover:underline"
+            >
+              Ver todos
+            </Link>
+          </div>
+
+          {loading ? (
+            <>
+              <ClientSkeleton />
+              <ClientSkeleton />
+              <ClientSkeleton />
+              <ClientSkeleton />
+              <ClientSkeleton />
+            </>
+          ) : (data?.clients || []).length === 0 ? (
+            <div className="px-5 py-10 text-center text-gray-400 text-sm">
+              No tienes clientes registrados.
+            </div>
+          ) : (
+            (data?.clients || []).map((c) => (
+              <div
+                key={c.id}
+                onClick={() => router.push(`/clients/${c.id}`)}
+                className="px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer transition"
+              >
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-semibold text-gray-800">
+                    {c.name}
+                  </span>
+                  {c.skin_type && (
+                    <span className="text-xs text-[#E75480] font-medium">
+                      {c.skin_type}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-400 mb-1.5">
+                  {formatPhone(c.phone)}
+                </div>
+                <span
+                  className={`rounded-full text-xs font-medium px-2.5 py-0.5 ${
+                    c.status === "customer"
+                      ? "bg-[#FFF0F4] text-[#C0395E]"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {c.status === "customer" ? "Cliente" : "Prospecto"}
+                </span>
+              </div>
+            ))
+          )}
+
+          <Link
+            href="/clients"
+            className="block text-center py-3 text-xs text-[#E75480] font-medium hover:bg-gray-50 border-t border-gray-50 transition"
+          >
+            Ver todos los clientes →
+          </Link>
+          <div className="text-right px-5 py-2 text-xs text-gray-200">
+            {buildVersion()}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
