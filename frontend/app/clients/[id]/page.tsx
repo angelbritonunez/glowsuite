@@ -101,15 +101,19 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(date: string): string {
-  // Date-only strings (YYYY-MM-DD) are parsed as UTC midnight by Date(),
-  // which shifts to the previous day in UTC-4. Appending noon avoids this.
-  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date + "T12:00:00" : date
+  // Date-only strings (YYYY-MM-DD) must NOT be passed directly to new Date():
+  // they are parsed as UTC midnight, which shifts to the previous day in UTC-4.
+  // Constructing with explicit parts at noon local time is cross-browser safe.
+  const parts = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const d = parts
+    ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), 12, 0, 0)
+    : new Date(date)
   return new Intl.DateTimeFormat("es-DO", {
     day: "2-digit",
     month: "short",
     year: "numeric",
     timeZone: "America/Santo_Domingo",
-  }).format(new Date(normalized))
+  }).format(d)
 }
 
 // ── Badge components ──────────────────────────────────────────────────────────
@@ -186,7 +190,6 @@ export default function ClientProfilePage() {
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null)
   const [abonoAmount, setAbonoAmount] = useState<string>("")
   const [abonoType, setAbonoType] = useState<"efectivo" | "transferencia">("efectivo")
-  const [abonoNotes, setAbonoNotes] = useState("")
   const [savingAbono, setSavingAbono] = useState(false)
   const [abonoError, setAbonoError] = useState<string | null>(null)
 
@@ -200,7 +203,7 @@ export default function ClientProfilePage() {
     setSavingAbono(true)
     setAbonoError(null)
     try {
-      await addPayment(abonoSaleId, { amount, payment_type: abonoType, notes: abonoNotes || undefined })
+      await addPayment(abonoSaleId, { amount, payment_type: abonoType })
 
       // Refresh sales and the payment history for this sale in parallel
       const supabase = createClient()
@@ -782,10 +785,15 @@ export default function ClientProfilePage() {
                                 type="number"
                                 inputMode="numeric"
                                 min={0}
-                                max={Math.max(0, Number(sale.total) - Number(sale.amount_paid))}
                                 placeholder={`Máx. ${formatCurrency(Math.max(0, Number(sale.total) - Number(sale.amount_paid)))}`}
                                 value={abonoAmount}
-                                onChange={(e) => setAbonoAmount(e.target.value)}
+                                onChange={(e) => {
+                                  const remaining = Math.max(0, Number(sale.total) - Number(sale.amount_paid))
+                                  const v = e.target.value
+                                  if (v === "") { setAbonoAmount(""); return }
+                                  const n = Math.min(Number(v), remaining)
+                                  setAbonoAmount(String(n < 0 ? 0 : n))
+                                }}
                                 className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
                               />
                               <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
@@ -802,13 +810,6 @@ export default function ClientProfilePage() {
                                   </button>
                                 ))}
                               </div>
-                              <input
-                                type="text"
-                                placeholder="Nota (opcional)"
-                                value={abonoNotes}
-                                onChange={(e) => setAbonoNotes(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
-                              />
                               <div className="flex gap-2">
                                 <button
                                   onClick={handleSaveAbono}
