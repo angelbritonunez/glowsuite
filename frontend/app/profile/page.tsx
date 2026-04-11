@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -80,7 +80,7 @@ function SaveButton({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const mustChange   = searchParams.get("mustChange") === "1"
@@ -630,5 +630,13 @@ export default function ProfilePage() {
 
       </div>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfileContent />
+    </Suspense>
   )
 }
