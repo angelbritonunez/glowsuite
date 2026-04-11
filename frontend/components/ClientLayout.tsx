@@ -7,37 +7,45 @@ import Navbar from "@/components/Navbar"
 
 export default function ClientLayout({ children }: any) {
   const [user, setUser] = useState<any>(null)
+  const [role, setRole] = useState<string>("consultora")
   const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    const loadUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
 
+      const user = session.user
       setUser(user)
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, must_change_password")
+        .eq("id", user.id)
+        .single()
+
+      setRole(profile?.role || "consultora")
+
+      if (profile?.must_change_password) {
+        router.push("/profile?mustChange=1")
+      }
     }
 
-    getUser()
+    loadUser()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      router.refresh()
+      if (!session?.user) setRole("consultora")
     })
 
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [router])
+    return () => { subscription.unsubscribe() }
+  }, [])
 
   return (
     <>
-      {user && <Navbar />}
-
+      {user && <Navbar role={role} />}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {children}
       </main>

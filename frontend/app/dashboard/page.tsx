@@ -153,6 +153,10 @@ export default function Dashboard() {
           receivables_count: res.receivables_count ?? 0,
         })
       } catch (err: any) {
+        if (err.message === "Usuario no autenticado") {
+          router.push("/login")
+          return
+        }
         setError(err.message || "Error cargando datos")
       } finally {
         setLoading(false)

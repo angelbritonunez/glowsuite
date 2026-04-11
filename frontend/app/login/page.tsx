@@ -23,14 +23,25 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     setLoading(false)
 
     if (error) {
       setError(error.message)
     } else {
-      router.push("/dashboard")
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single()
+
+      const role = profile?.role
+      if (role === "admin" || role === "operador") {
+        router.push("/admin/users")
+      } else {
+        router.push("/dashboard")
+      }
     }
   }
 
@@ -95,6 +106,7 @@ export default function LoginPage() {
           ¿Olvidaste tu contraseña?
         </p>
 
+        {/* Registro deshabilitado — el admin crea las cuentas desde /admin/users
         <p className="text-sm text-gray-500 text-center">
           ¿No tienes cuenta?{" "}
           <span
@@ -104,6 +116,10 @@ export default function LoginPage() {
           >
             Crear cuenta →
           </span>
+        </p>
+        */}
+        <p className="text-sm text-gray-400 text-center">
+          ¿No tienes cuenta? Contacta a tu administrador.
         </p>
       </div>
     </AuthCard>
