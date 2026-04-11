@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Mail, Lock, Eye, EyeOff, Sparkles } from "lucide-react"
@@ -9,7 +9,7 @@ import AuthInput from "@/components/ui/AuthInput"
 import AuthButton from "@/components/ui/AuthButton"
 import { getMe } from "@/lib/api"
 
-export default function LoginPage() {
+function LoginForm() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -134,5 +134,13 @@ export default function LoginPage() {
         </p>
       </div>
     </AuthCard>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
