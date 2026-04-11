@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { addPayment, updateClient, deleteClient } from "@/lib/api"
+import { addPayment, getSalePayments, updateClient, deleteClient } from "@/lib/api"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,14 @@ type Sale = {
   sale_date: string | null
   notes: string | null
   sale_items: SaleItem[]
+}
+
+type Payment = {
+  id: string
+  amount: number
+  payment_type: string
+  payment_date: string
+  notes: string | null
 }
 
 type Followup = {
@@ -93,12 +101,15 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(date: string): string {
+  // Date-only strings (YYYY-MM-DD) are parsed as UTC midnight by Date(),
+  // which shifts to the previous day in UTC-4. Appending noon avoids this.
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date + "T12:00:00" : date
   return new Intl.DateTimeFormat("es-DO", {
     day: "2-digit",
     month: "short",
     year: "numeric",
     timeZone: "America/Santo_Domingo",
-  }).format(new Date(date))
+  }).format(new Date(normalized))
 }
 
 // ── Badge components ──────────────────────────────────────────────────────────
@@ -154,6 +165,7 @@ export default function ClientProfilePage() {
   const [followups, setFollowups] = useState<Followup[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>("info")
+  const [salePayments, setSalePayments] = useState<Record<string, Payment[]>>({})
 
   // Edit form state — mirrors /clients/new
   const [name, setName] = useState("")
@@ -189,14 +201,19 @@ export default function ClientProfilePage() {
     setAbonoError(null)
     try {
       await addPayment(abonoSaleId, { amount, payment_type: abonoType, notes: abonoNotes || undefined })
-      // Refresh sales
+
+      // Refresh sales and the payment history for this sale in parallel
       const supabase = createClient()
-      const { data } = await supabase
-        .from("sales")
-        .select("id, total, amount_paid, discount, payment_type, status, created_at, sale_date, notes, sale_items(quantity, price, product:products(name))")
-        .eq("client_id", id)
-        .order("created_at", { ascending: false })
+      const [{ data }, paymentsRes] = await Promise.all([
+        supabase
+          .from("sales")
+          .select("id, total, amount_paid, discount, payment_type, status, created_at, sale_date, notes, sale_items(quantity, price, product:products(name))")
+          .eq("client_id", id)
+          .order("created_at", { ascending: false }),
+        getSalePayments(abonoSaleId),
+      ])
       setSales((data as Sale[]) || [])
+      setSalePayments((prev) => ({ ...prev, [abonoSaleId]: paymentsRes.payments || [] }))
       setAbonoSaleId(null)
       setAbonoAmount("")
       setAbonoNotes("")
@@ -238,8 +255,23 @@ export default function ClientProfilePage() {
         setFollowupEnabled(c.followup_enabled ?? true)
       }
 
-      setSales((salesRes.data as Sale[]) || [])
+      const fetchedSales = (salesRes.data as Sale[]) || []
+      setSales(fetchedSales)
       setFollowups((followupsRes.data as Followup[]) || [])
+
+      // Fetch payment history for every sale that has at least one payment recorded
+      const salesWithPayments = fetchedSales.filter((s) => Number(s.amount_paid) > 0)
+      if (salesWithPayments.length > 0) {
+        const results = await Promise.all(
+          salesWithPayments.map((s) => getSalePayments(s.id))
+        )
+        const map: Record<string, Payment[]> = {}
+        salesWithPayments.forEach((s, i) => {
+          map[s.id] = results[i].payments || []
+        })
+        setSalePayments(map)
+      }
+
       setLoading(false)
     }
 
@@ -705,12 +737,44 @@ export default function ClientProfilePage() {
                         )}
                       </div>
 
+                      {/* Payment history */}
+                      {(salePayments[sale.id] ?? []).length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-50">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                            Historial de pagos
+                          </p>
+                          <div className="space-y-1.5">
+                            {(salePayments[sale.id] ?? []).map((p) => (
+                              <div key={p.id} className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 text-gray-500">
+                                  <span>{formatDate(p.payment_date)}</span>
+                                  <span className="rounded-full px-2 py-0.5 bg-gray-100 text-gray-400 capitalize">
+                                    {p.payment_type}
+                                  </span>
+                                  {p.notes && (
+                                    <span className="text-gray-300 italic">{p.notes}</span>
+                                  )}
+                                </div>
+                                <span className="font-semibold text-green-600">
+                                  {formatCurrency(p.amount)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Abono action */}
                       {sale.status !== "pagado" && (
                         <div className="mt-3">
                           {abonoSaleId === sale.id ? (
                             <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
-                              <p className="text-xs font-semibold text-gray-700">Registrar abono</p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold text-gray-700">Registrar abono</p>
+                                <span className="text-xs text-orange-600 font-semibold">
+                                  Saldo: {formatCurrency(Math.max(0, Number(sale.total) - Number(sale.amount_paid)))}
+                                </span>
+                              </div>
                               {abonoError && (
                                 <p className="text-xs text-red-500">{abonoError}</p>
                               )}
@@ -718,7 +782,8 @@ export default function ClientProfilePage() {
                                 type="number"
                                 inputMode="numeric"
                                 min={0}
-                                placeholder="Monto del abono"
+                                max={Math.max(0, Number(sale.total) - Number(sale.amount_paid))}
+                                placeholder={`Máx. ${formatCurrency(Math.max(0, Number(sale.total) - Number(sale.amount_paid)))}`}
                                 value={abonoAmount}
                                 onChange={(e) => setAbonoAmount(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
