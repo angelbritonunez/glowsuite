@@ -11,6 +11,7 @@ type Followup = {
   type: "day2" | "week2" | "month2"
   scheduled_date: string
   client_name: string
+  client_status: string
   phone: string
   mensaje: string
   bucket: "overdue" | "today" | "upcoming"
@@ -279,10 +280,17 @@ function FollowupsContent() {
                   <div key={fup.id} className="bg-white rounded-xl border border-gray-100 p-4">
                     {/* Row 1 */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-semibold text-sm text-gray-800">{fup.client_name}</span>
+                        <span className={`rounded-full text-xs font-medium px-2 py-0.5 ${
+                          fup.client_status === "customer"
+                            ? "bg-[#FFF0F4] text-[#C0395E]"
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {fup.client_status === "customer" ? "Cliente" : "Prospecto"}
+                        </span>
                         {fup.phone && (
-                          <span className="text-xs text-gray-400 ml-1.5">· {formatPhone(fup.phone)}</span>
+                          <span className="text-xs text-gray-400">· {formatPhone(fup.phone)}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">

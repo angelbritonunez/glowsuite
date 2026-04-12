@@ -33,6 +33,7 @@ def get_followups(request: Request):
                 "scheduled_date": f["scheduled_date"],
                 "mensaje": f.get("mensaje") or generate_message(f["type"], client_data.get("name", ""), client_status),
                 "client_name": client_data.get("name", "Cliente"),
+                "client_status": client_status,
                 "phone": client_data.get("phone", ""),
             })
 
