@@ -628,44 +628,82 @@ export default function ClientProfilePage() {
                     <div key={sale.id} className="border border-gray-100 rounded-xl overflow-hidden bg-white">
 
                       {/* ── Collapsed header (always visible) ── */}
-                      <button
-                        type="button"
-                        onClick={() => toggleSale(sale.id)}
-                        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition"
-                      >
-                        {/* Chevron */}
-                        <ChevronDown
-                          size={15}
-                          className={`flex-shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                        />
+                      <div className="group relative flex items-center hover:bg-gray-50 transition">
+                        <button
+                          type="button"
+                          onClick={() => toggleSale(sale.id)}
+                          className="flex-1 text-left px-4 py-3 flex items-center gap-3 min-w-0"
+                        >
+                          {/* Chevron */}
+                          <ChevronDown
+                            size={15}
+                            className={`flex-shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
 
-                        {/* Date */}
-                        <span className="text-xs text-gray-400 w-24 flex-shrink-0">
-                          {formatDate(sale.sale_date ?? sale.created_at)}
-                        </span>
-
-                        {/* Products summary */}
-                        <span className="flex-1 text-xs text-gray-600 truncate">
-                          {sale.sale_items?.map((i) => `${i.product?.name ?? "Producto"} ×${i.quantity}`).join(", ") || "—"}
-                        </span>
-
-                        {/* Badges + total */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-500 capitalize hidden sm:inline">
-                            {sale.payment_type || "Efectivo"}
+                          {/* Date */}
+                          <span className="text-xs text-gray-400 w-24 flex-shrink-0">
+                            {formatDate(sale.sale_date ?? sale.created_at)}
                           </span>
-                          {sale.status === "pagado" ? (
-                            <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-green-50 text-green-700">Pagado</span>
-                          ) : sale.status === "parcial" ? (
-                            <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-orange-50 text-orange-600">Parcial</span>
-                          ) : (
-                            <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-yellow-50 text-yellow-700">Pendiente</span>
-                          )}
-                          <span className="text-sm font-semibold text-gray-800 w-20 text-right">
-                            {formatCurrency(total)}
+
+                          {/* Products summary */}
+                          <span className="flex-1 text-xs text-gray-600 truncate">
+                            {sale.sale_items?.map((i) => `${i.product?.name ?? "Producto"} ×${i.quantity}`).join(", ") || "—"}
                           </span>
-                        </div>
-                      </button>
+
+                          {/* Badges + total */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-500 capitalize hidden sm:inline">
+                              {sale.payment_type || "Efectivo"}
+                            </span>
+                            {sale.status === "pagado" ? (
+                              <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-green-50 text-green-700">Pagado</span>
+                            ) : sale.status === "parcial" ? (
+                              <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-orange-50 text-orange-600">Parcial</span>
+                            ) : (
+                              <span className="rounded-full text-xs font-medium px-2 py-0.5 bg-yellow-50 text-yellow-700">Pendiente</span>
+                            )}
+                            <span className="text-sm font-semibold text-gray-800 w-20 text-right">
+                              {formatCurrency(total)}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Trash — visible on hover, hidden by default */}
+                        {confirmDeleteSaleId !== sale.id && (
+                          <button
+                            type="button"
+                            onClick={() => { setConfirmDeleteSaleId(sale.id); setAbonoSaleId(null) }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity pr-4 text-gray-300 hover:text-red-400"
+                            title="Eliminar venta"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+
+                        {/* Inline confirmation — replaces trash icon */}
+                        {confirmDeleteSaleId === sale.id && (
+                          <div className="flex items-center gap-2 pr-4 flex-shrink-0">
+                            <span className="text-xs text-gray-400 hidden sm:inline">
+                              {Number(sale.amount_paid) > 0
+                                ? "Se eliminarán la venta, sus abonos y seguimientos."
+                                : "Se eliminarán la venta y sus seguimientos."}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteSale(sale.id)}
+                              disabled={deletingSale}
+                              className="text-xs bg-red-500 text-white rounded-lg px-2.5 py-1 font-semibold hover:bg-red-600 disabled:opacity-50 transition"
+                            >
+                              {deletingSale ? "..." : "Confirmar"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteSaleId(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
                       {/* ── Expanded detail ── */}
                       {isOpen && (
@@ -736,41 +774,6 @@ export default function ClientProfilePage() {
                               </div>
                             </div>
                           )}
-
-                          {/* Delete sale */}
-                          <div className="pt-1 border-t border-gray-50">
-                            {confirmDeleteSaleId === sale.id ? (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs text-gray-500">
-                                  {Number(sale.amount_paid) > 0
-                                    ? `Se eliminarán esta venta, sus abonos y seguimientos asociados.`
-                                    : `Se eliminarán esta venta y sus seguimientos asociados.`}
-                                  {` Esta acción no se puede deshacer.`}
-                                </span>
-                                <button
-                                  onClick={() => handleDeleteSale(sale.id)}
-                                  disabled={deletingSale}
-                                  className="text-xs bg-red-500 text-white rounded-lg px-3 py-1.5 font-semibold hover:bg-red-600 disabled:opacity-50 transition"
-                                >
-                                  {deletingSale ? "Eliminando..." : "Confirmar"}
-                                </button>
-                                <button
-                                  onClick={() => setConfirmDeleteSaleId(null)}
-                                  className="text-xs text-gray-400 hover:text-gray-600"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => { setConfirmDeleteSaleId(sale.id); setAbonoSaleId(null) }}
-                                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition"
-                              >
-                                <Trash2 size={12} />
-                                Eliminar venta
-                              </button>
-                            )}
-                          </div>
 
                           {/* Abono action */}
                           {sale.status !== "pagado" && (
