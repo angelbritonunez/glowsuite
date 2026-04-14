@@ -53,6 +53,7 @@ export default function NewSaleContent() {
   // Form extras
   const [paymentType, setPaymentType] = useState("efectivo")
   const [discount, setDiscount] = useState<number | "">("")
+  const [discountAmount, setDiscountAmount] = useState<string>("")
   const [notes, setNotes] = useState("")
   const [saleDate, setSaleDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -570,28 +571,65 @@ export default function NewSaleContent() {
               </div>
 
               {/* Discount */}
-              <div>
-                <label className={labelClass}>Descuento (%)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={50}
-                  value={discount}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v === "") {
-                      setDiscount("")
-                      return
-                    }
-                    let n = Number(v)
-                    if (n < 0) n = 0
-                    if (n > 50) n = 50
-                    setDiscount(n)
-                  }}
-                  placeholder="0"
-                  className={inputClass}
-                />
+              <div className="space-y-2">
+                <label className={labelClass}>Descuento</label>
+                <div className="flex gap-2">
+                  {/* Percentage */}
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={50}
+                      value={discount}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === "") {
+                          setDiscount("")
+                          setDiscountAmount("")
+                          return
+                        }
+                        let n = Number(v)
+                        if (n < 0) n = 0
+                        if (n > 50) n = 50
+                        setDiscount(n)
+                        setDiscountAmount(
+                          subtotal > 0 ? ((subtotal * n) / 100).toFixed(2) : ""
+                        )
+                      }}
+                      placeholder="0"
+                      className={`${inputClass} pr-8`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                  </div>
+                  {/* Amount */}
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">RD$</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={discountAmount}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === "") {
+                          setDiscountAmount("")
+                          setDiscount("")
+                          return
+                        }
+                        const amt = Math.max(0, Number(v))
+                        setDiscountAmount(v)
+                        if (subtotal > 0) {
+                          let pct = (amt / subtotal) * 100
+                          if (pct > 50) pct = 50
+                          setDiscount(Math.round(pct * 100) / 100)
+                        }
+                      }}
+                      placeholder="0.00"
+                      className={`${inputClass} pl-10`}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Payment mode */}
