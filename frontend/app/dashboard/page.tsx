@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getDashboard } from "@/lib/api"
+import { getDashboard, updateFollowup, completeFollowup } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { DashboardData, DashboardFollowup, ClientItem } from "@/types"
@@ -85,6 +85,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dismissed] = useState<Set<string>>(new Set())
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
+  const [completing, setCompleting] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -98,6 +101,7 @@ export default function Dashboard() {
           mensaje: f.mensaje,
           client_name: f.client_name,
           client_phone: f.client_phone,
+          client_status: f.client_status,
           isOverdue: f.is_overdue,
         }))
 
@@ -128,6 +132,32 @@ export default function Dashboard() {
 
     init()
   }, [])
+
+  const handleSaveMessage = async (id: string) => {
+    await updateFollowup(id, { mensaje: editText })
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        followups: prev.followups.map((f) => f.id === id ? { ...f, mensaje: editText } : f),
+      }
+    })
+    setEditingId(null)
+  }
+
+  const handleComplete = async (id: string) => {
+    setCompleting(id)
+    try {
+      await completeFollowup(id)
+      setData((prev) => {
+        if (!prev) return prev
+        const followups = prev.followups.filter((f) => f.id !== id)
+        return { ...prev, followups, totalPending: followups.length, vencidos: followups.filter((f) => f.isOverdue).length }
+      })
+    } finally {
+      setCompleting(null)
+    }
+  }
 
   const visibleFollowups = (data?.followups || []).filter(
     (f) => !dismissed.has(f.id)
@@ -313,21 +343,68 @@ export default function Dashboard() {
                           {fup.client_phone && <span className="text-gray-400 text-xs ml-1">· {formatPhone(fup.client_phone)}</span>}
                         </div>
                         <div className="flex gap-1.5 items-center flex-wrap justify-end">
+                          <span className={`rounded-full text-xs font-medium px-2.5 py-0.5 ${fup.client_status === "customer" ? "bg-[#FFF0F4] text-[#C0395E]" : "bg-gray-100 text-gray-500"}`}>
+                            {fup.client_status === "customer" ? "Cliente" : "Prospecto"}
+                          </span>
                           <span className={`rounded-full text-xs font-medium px-2.5 py-0.5 ${typeBadgeClass}`}>{typeLabel}</span>
                           {fup.isOverdue && <span className="bg-[#E75480] text-white rounded-full text-xs font-medium px-2.5 py-0.5">Vencido</span>}
                           <span className="text-xs text-gray-300">{dateFormatted}</span>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">{fup.mensaje}</p>
-                      <a
-                        href={buildWAUrl(fup.client_phone, fup.mensaje || "")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full bg-[#E75480] text-white rounded-lg py-2 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#d04070] transition"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.989.58 3.842 1.583 5.405L2.046 22l4.729-1.518A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.182a8.18 8.18 0 0 1-4.17-1.14l-.299-.177-3.093.994.957-3.026-.198-.316A8.143 8.143 0 0 1 3.818 12c0-4.511 3.671-8.182 8.182-8.182 4.51 0 8.182 3.671 8.182 8.182 0 4.51-3.671 8.182-8.182 8.182z"/></svg>
-                        Enviar por WhatsApp
-                      </a>
+
+                      {editingId === fup.id ? (
+                        <div className="mb-3">
+                          <textarea
+                            className="w-full text-xs border border-gray-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#E75480]"
+                            rows={4}
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                          />
+                          <div className="flex gap-2 mt-1.5">
+                            <button
+                              onClick={() => handleSaveMessage(fup.id)}
+                              className="text-xs bg-[#E75480] text-white rounded-lg px-3 py-1 font-semibold hover:bg-[#d04070] transition"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 transition"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{fup.mensaje}</p>
+                          <button
+                            onClick={() => { setEditingId(fup.id); setEditText(fup.mensaje || "") }}
+                            className="text-[11px] text-[#E75480] hover:underline mt-1"
+                          >
+                            Editar mensaje
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <a
+                          href={buildWAUrl(fup.client_phone, editingId === fup.id ? editText : (fup.mensaje || ""))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 bg-[#E75480] text-white rounded-lg py-2 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#d04070] transition"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.989.58 3.842 1.583 5.405L2.046 22l4.729-1.518A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.182a8.18 8.18 0 0 1-4.17-1.14l-.299-.177-3.093.994.957-3.026-.198-.316A8.143 8.143 0 0 1 3.818 12c0-4.511 3.671-8.182 8.182-8.182 4.51 0 8.182 3.671 8.182 8.182 0 4.51-3.671 8.182-8.182 8.182z"/></svg>
+                          Enviar por WhatsApp
+                        </a>
+                        <button
+                          onClick={() => handleComplete(fup.id)}
+                          disabled={completing === fup.id}
+                          className="bg-gray-100 text-gray-600 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-gray-200 transition disabled:opacity-50"
+                        >
+                          {completing === fup.id ? "..." : "Marcar enviado"}
+                        </button>
+                      </div>
                     </div>
                   )
                 })}

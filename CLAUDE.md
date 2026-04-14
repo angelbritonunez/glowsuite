@@ -75,17 +75,41 @@ Most data mutations go through FastAPI, but some reads query Supabase directly f
 - Mobile-first with `md:` / `lg:` breakpoints
 - Icons via `lucide-react`
 
+## Environments
+
+Two Supabase projects — local always apunta a DEV, PROD solo vive en los hostings:
+
+| Ambiente | Supabase project | Frontend | Backend |
+|----------|-----------------|----------|---------|
+| DEV | `glowsuite-dev` (bawkkmcoqctbjxaqqgcx) | `frontend/.env.local` | `backend/.env` |
+| PROD | `glowsuite` (nmfszmssahhposvaodml) | Variables en Vercel | Variables en Render |
+
+**Regla:** nunca tocar variables de PROD localmente. Cualquier migración se aplica primero en DEV, se prueba, y luego se aplica en PROD via Supabase MCP apuntando al proyecto `nmfszmssahhposvaodml`.
+
 ## Environment Setup
 
-**Frontend** (`frontend/.env.local`):
+**Frontend DEV** (`frontend/.env.local`):
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_SUPABASE_URL=<supabase project url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase anon key>
+NEXT_PUBLIC_SUPABASE_URL=https://bawkkmcoqctbjxaqqgcx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite-dev>
 ```
 
-**Backend** (`backend/.env`):
+**Backend DEV** (`backend/.env`):
 ```
-SUPABASE_URL=<supabase project url>
-SUPABASE_KEY=<supabase service role key>
+SUPABASE_URL=https://bawkkmcoqctbjxaqqgcx.supabase.co
+SUPABASE_KEY=<service_role key de glowsuite-dev>
+```
+
+**Frontend PROD** (Vercel environment variables):
+```
+NEXT_PUBLIC_API_URL=<URL del backend en Render>
+NEXT_PUBLIC_SUPABASE_URL=https://nmfszmssahhposvaodml.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite PROD>
+```
+
+**Backend PROD** (Render environment variables):
+```
+SUPABASE_URL=https://nmfszmssahhposvaodml.supabase.co
+SUPABASE_KEY=<service_role key de glowsuite PROD>
 ```

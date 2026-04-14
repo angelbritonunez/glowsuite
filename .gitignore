@@ -4,6 +4,7 @@
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local
+frontend/tsconfig.tsbuildinfo
 
 # =========================
 # BACKEND
@@ -11,6 +12,8 @@ frontend/.env.local
 backend/.env
 backend/__pycache__/
 backend/**/*.pyc
+backend/venv/
+backend/.venv/
 
 # =========================
 # PYTHON (GLOBAL)
@@ -18,12 +21,15 @@ backend/**/*.pyc
 __pycache__/
 *.pyc
 *.pyo
+venv/
+.venv/
 
 # =========================
 # NODE / JS (GLOBAL)
 # =========================
 node_modules/
 .next/
+*.tsbuildinfo
 
 # =========================
 # ENV
@@ -47,3 +53,13 @@ Thumbs.db
 # =========================
 .vscode/
 .idea/
+
+# =========================
+# TOOLING LOCAL
+# =========================
+.claude/
+
+# =========================
+# INTERNAL DOCS (sensitive)
+# =========================
+glowsuite-infra-report.md

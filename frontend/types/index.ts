@@ -108,6 +108,7 @@ export type DashboardFollowup = {
   mensaje: string | null
   client_name: string
   client_phone: string
+  client_status: string
   isOverdue: boolean
 }
 

@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from typing import Optional
 from app.db import supabase
 from app.utils import require_user_id
+from app.services.followup_service import generate_message
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -31,7 +32,7 @@ def get_dashboard(x_user_id: Optional[str] = Header(None)):
         first_name = profile.get("first_name") or profile.get("email", "").split("@")[0] or "Consultora"
 
         followups_res = supabase.table("followups") \
-            .select("id, type, scheduled_date, status, mensaje, clients(name, phone)") \
+            .select("id, type, scheduled_date, status, mensaje, clients(name, phone, status)") \
             .eq("user_id", x_user_id) \
             .eq("status", "pending") \
             .order("scheduled_date", desc=False) \
@@ -47,9 +48,10 @@ def get_dashboard(x_user_id: Optional[str] = Header(None)):
                 "type": f["type"],
                 "scheduled_date": f["scheduled_date"],
                 "status": f["status"],
-                "mensaje": f.get("mensaje"),  # reads stored message; may have been edited by consultant
                 "client_name": client.get("name", "Cliente"),
                 "client_phone": client.get("phone", ""),
+                "client_status": client.get("status", "prospect"),
+                "mensaje": f.get("mensaje") or generate_message(f["type"], client.get("name", ""), client.get("status", "prospect")),
                 "is_overdue": f["scheduled_date"] < now_iso,  # ISO string comparison is safe here
             })
 
