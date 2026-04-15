@@ -42,7 +42,7 @@ function LoginForm() {
         const profile = await getMe(data.user.id)
         const { role } = profile
         if (role === "admin" || role === "operador") {
-          router.push("/admin/users")
+          router.push("/operador/users")
         } else {
           router.push("/dashboard")
         }

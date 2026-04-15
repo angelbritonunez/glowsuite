@@ -4,6 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Sparkles } from "lucide-react"
 import UserMenu from "@/components/UserMenu"
+import { homeFor } from "@/lib/auth-config"
+import type { Role } from "@/types"
 
 const consultorItems = [
   { label: "Dashboard",    href: "/dashboard" },
@@ -15,14 +17,14 @@ const consultorItems = [
 
 const adminItems = [
   { label: "Dashboard", href: "/admin/dashboard" },
-  { label: "Usuarios", href: "/admin/users" },
+  { label: "Usuarios", href: "/operador/users" },
 ]
 
 const operadorItems = [
-  { label: "Usuarios", href: "/admin/users" },
+  { label: "Usuarios", href: "/operador/users" },
 ]
 
-export default function Navbar({ role = "consultora" }: { role?: string }) {
+export default function Navbar({ role = "consultora" }: { role?: Role }) {
   const pathname = usePathname()
 
   const items =
@@ -34,7 +36,7 @@ export default function Navbar({ role = "consultora" }: { role?: string }) {
     <div className="bg-white border-b border-gray-100 h-14 flex items-center px-6 justify-between sticky top-0 z-50">
 
       {/* ── Izquierda: Brand ── */}
-      <Link href={role === "operador" ? "/admin/users" : "/dashboard"} className="flex items-center gap-2.5 no-underline">
+      <Link href={homeFor(role)} className="flex items-center gap-2.5 no-underline">
         <div className="bg-[#E75480] rounded-xl w-8 h-8 flex items-center justify-center flex-shrink-0">
           <Sparkles size={16} stroke="white" strokeWidth={2} />
         </div>

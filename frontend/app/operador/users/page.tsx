@@ -319,7 +319,7 @@ function CredentialsModal({ email, password, phone, firstName, onClose }: {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function AdminUsersPage() {
+export default function OperadorUsersPage() {
   const router = useRouter()
   const [userId, setUserId]         = useState<string | null>(null)
   const [callerRole, setCallerRole] = useState<Role>("consultora")
@@ -576,7 +576,7 @@ export default function AdminUsersPage() {
                       ) : (
                         <button
                           onClick={() => setEditingNotes({ id: u.id, value: u.notes || "" })}
-                          className="text-xs text-gray-400 hover:text-gray-700 truncate max-w-full text-left transition"
+                          className="text-xs text-gray-400 hover:text-gray-700 truncate max-full text-left transition"
                           title={u.notes || "Agregar nota"}
                         >
                           {u.notes || <span className="italic text-gray-300">Agregar nota</span>}
