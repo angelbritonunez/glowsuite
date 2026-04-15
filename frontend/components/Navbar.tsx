@@ -14,8 +14,8 @@ const consultorItems = [
 ]
 
 const adminItems = [
-  ...consultorItems,
-  { label: "Admin", href: "/admin/users" },
+  { label: "Dashboard", href: "/admin/dashboard" },
+  { label: "Usuarios", href: "/admin/users" },
 ]
 
 const operadorItems = [

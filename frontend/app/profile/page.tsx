@@ -277,7 +277,7 @@ function ProfileContent() {
       if (mustChange) {
         const supabase2 = createClient()
         await supabase2.from("profiles").update({ must_change_password: false }).eq("id", userId)
-        const dest = (role === "admin" || role === "operador") ? "/admin/users" : "/dashboard"
+        const dest = role === "admin" ? "/admin/dashboard" : role === "operador" ? "/admin/users" : "/dashboard"
         setTimeout(() => router.push(dest), 1500)
       } else {
         setTimeout(() => setPasswordStatus(null), 3000)
@@ -431,8 +431,8 @@ function ProfileContent() {
           </div>
         </div>
 
-        {/* ── Metas de negocio ── */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        {/* ── Metas de negocio (solo consultoras) ── */}
+        {role !== "admin" && <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="border-b border-gray-50 px-5 py-4">
             <span className="text-sm font-semibold text-gray-800">Metas de negocio</span>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -469,7 +469,7 @@ function ProfileContent() {
               status={goalStatus}
             />
           </div>
-        </div>
+        </div>}
 
         {/* ── Seguridad ── */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">

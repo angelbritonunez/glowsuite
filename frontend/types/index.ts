@@ -177,3 +177,35 @@ export type AdminUser = {
   last_sign_in_at: string | null
   days_remaining: number | null
 }
+
+// ── Admin Dashboard ────────────────────────────────────────────────────────────
+
+export type AdminDashboardConsultora = {
+  id: string
+  name: string
+  email: string
+  is_active: boolean
+  sales_count: number
+  revenue: number
+  total_customers: number
+  last_sign_in: string | null
+  days_remaining: number | null
+}
+
+export type AdminDashboardData = {
+  platform: {
+    total_users: number
+    active: number
+    inactive: number
+    expiring_soon: { id: string; name: string; days_remaining: number }[]
+  }
+  this_month: {
+    sales_count: number
+    revenue: number
+    new_clients: number
+    followups_sent: number
+    followups_pending: number
+  }
+  monthly_trend: { month: string; revenue: number }[]
+  consultoras: AdminDashboardConsultora[]
+}

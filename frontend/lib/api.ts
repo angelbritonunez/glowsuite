@@ -236,6 +236,16 @@ export const getMetrics = async (period: string = "month") => {
   return res.json()
 }
 
+// ADMIN DASHBOARD
+export const getAdminDashboard = async () => {
+  const userId = await getUserId()
+  const res = await fetch(`${API_URL}/admin/dashboard`, {
+    headers: { "x-user-id": userId },
+  })
+  if (!res.ok) throw new Error("Error obteniendo dashboard admin")
+  return res.json()
+}
+
 export const getClients = async () => {
   const userId = await getUserId()
 

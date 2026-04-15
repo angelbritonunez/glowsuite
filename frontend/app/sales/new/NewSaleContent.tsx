@@ -578,7 +578,8 @@ export default function NewSaleContent() {
                   <div className="relative flex-1">
                     <input
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
+                      step="any"
                       min={0}
                       max={50}
                       value={discount}
@@ -612,7 +613,8 @@ export default function NewSaleContent() {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">RD$</span>
                     <input
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
+                      step="any"
                       min={0}
                       value={discountAmount}
                       onChange={(e) => {

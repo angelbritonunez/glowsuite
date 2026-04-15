@@ -1,7 +1,9 @@
 import re
 import random
 import string
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Header, HTTPException
 from typing import Optional
 from pydantic import BaseModel
@@ -77,7 +79,7 @@ def list_users(x_user_id: Optional[str] = Header(None)):
     _deactivate_expired_consultoras()
 
     query = supabase.table("profiles").select(
-        "id, email, first_name, last_name, role, is_active, notes, created_at, activated_at"
+        "id, email, first_name, last_name, role, is_active, notes, created_at, activated_at, last_seen_at"
     )
     # Operador only sees consultoras
     if caller_role == "operador":
@@ -85,19 +87,11 @@ def list_users(x_user_id: Optional[str] = Header(None)):
     profiles_res = query.execute()
     profiles = profiles_res.data or []
 
-    auth_users = {}
-    try:
-        for u in supabase.auth.admin.list_users():
-            auth_users[str(u.id)] = {"last_sign_in_at": u.last_sign_in_at}
-    except Exception:
-        pass
-
     result = []
     for p in profiles:
-        uid = p["id"]
         result.append({
             **p,
-            "last_sign_in_at": auth_users.get(uid, {}).get("last_sign_in_at"),
+            "last_sign_in_at": p.get("last_seen_at"),
             "days_remaining":  _days_remaining(p.get("activated_at"), p.get("role", "")),
         })
 
@@ -209,3 +203,133 @@ def reset_password(user_id: str, x_user_id: Optional[str] = Header(None)):
         raise HTTPException(status_code=400, detail=f"Error reseteando contraseña: {str(e)}")
 
     return {"status": "success", "temp_password": new_password}
+
+
+@router.get("/dashboard")
+def admin_dashboard(x_user_id: Optional[str] = Header(None)):
+    caller_role = get_caller_role(x_user_id)
+    if caller_role != "admin":
+        raise HTTPException(status_code=403, detail="Solo el admin puede ver este dashboard")
+
+    _deactivate_expired_consultoras()
+
+    tz = ZoneInfo("America/Santo_Domingo")
+    now = datetime.now(tz)
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    # ── 1. Platform stats ─────────────────────────────────────────────────────
+    profiles_res = supabase.table("profiles").select(
+        "id, first_name, last_name, email, role, is_active, activated_at, last_seen_at"
+    ).execute()
+    profiles = profiles_res.data or []
+
+    consultoras = [p for p in profiles if p["role"] == "consultora"]
+    total_users = len(consultoras)
+    active_users = len([p for p in consultoras if p["is_active"]])
+    inactive_users = total_users - active_users
+
+    expiring_soon = []
+    for p in consultoras:
+        if not p["is_active"]:
+            continue
+        days = _days_remaining(p.get("activated_at"), p.get("role", ""))
+        if days is not None and days <= 7:
+            name = f"{p.get('first_name') or ''} {p.get('last_name') or ''}".strip() or p["email"]
+            expiring_soon.append({"id": p["id"], "name": name, "days_remaining": days})
+
+    # ── 2. This month activity (all consultoras) ──────────────────────────────
+    sales_month_res = supabase.table("sales").select("id, total, user_id, created_at, sale_date").execute()
+    all_sales = sales_month_res.data or []
+
+    def effective_date(s: dict) -> str:
+        return (s.get("sale_date") or s.get("created_at") or "")[:10]
+
+    start_date = now.replace(day=1).date().isoformat()
+    end_date = now.date().isoformat()
+    sales_month = [s for s in all_sales if start_date <= effective_date(s) <= end_date]
+
+    sales_count = len(sales_month)
+    revenue_month = sum(float(s.get("total") or 0) for s in sales_month)
+
+    clients_month_res = supabase.table("clients").select("id", count="exact").gte("created_at", start_of_month).execute()
+    new_clients = clients_month_res.count or 0
+
+    followups_res = supabase.table("followups").select("id, status").execute()
+    followups = followups_res.data or []
+    followups_sent = len([f for f in followups if f["status"] == "sent"])
+    followups_pending = len([f for f in followups if f["status"] == "pending"])
+
+    # ── 3. Monthly trend (last 6 months) ──────────────────────────────────────
+    first_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    six_months_ago = first_this_month
+    for _ in range(5):
+        prev = six_months_ago - timedelta(days=1)
+        six_months_ago = prev.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    monthly_map: dict = defaultdict(float)
+    for s in all_sales:
+        date_key = effective_date(s)[:7]
+        if date_key >= six_months_ago.strftime("%Y-%m"):
+            monthly_map[date_key] += float(s.get("total") or 0)
+
+    monthly_trend = []
+    cur = six_months_ago.date().replace(day=1)
+    end_d = now.date().replace(day=1)
+    while cur <= end_d:
+        k = cur.strftime("%Y-%m")
+        monthly_trend.append({"month": k, "revenue": round(monthly_map.get(k, 0.0), 2)})
+        if cur.month == 12:
+            cur = cur.replace(year=cur.year + 1, month=1)
+        else:
+            cur = cur.replace(month=cur.month + 1)
+
+    # ── 4. Per-consultora breakdown ───────────────────────────────────────────
+
+    sales_per_user: dict = defaultdict(lambda: {"count": 0, "revenue": 0.0})
+    for s in sales_month:
+        uid = s.get("user_id")
+        if uid:
+            sales_per_user[uid]["count"] += 1
+            sales_per_user[uid]["revenue"] += float(s.get("total") or 0)
+
+    all_clients_res = supabase.table("clients").select("user_id, status").execute()
+    customers_per_user: dict = defaultdict(int)
+    for c in (all_clients_res.data or []):
+        if c.get("status") == "customer":
+            customers_per_user[c["user_id"]] += 1
+
+    consultoras_breakdown = []
+    for p in consultoras:
+        uid = p["id"]
+        name = f"{p.get('first_name') or ''} {p.get('last_name') or ''}".strip() or p["email"]
+        s = sales_per_user.get(uid, {"count": 0, "revenue": 0.0})
+        consultoras_breakdown.append({
+            "id": uid,
+            "name": name,
+            "email": p["email"],
+            "is_active": p["is_active"],
+            "sales_count": s["count"],
+            "revenue": round(s["revenue"], 2),
+            "total_customers": customers_per_user.get(uid, 0),
+            "last_sign_in": p.get("last_seen_at"),
+            "days_remaining": _days_remaining(p.get("activated_at"), p.get("role", "")),
+        })
+    consultoras_breakdown.sort(key=lambda x: x["revenue"], reverse=True)
+
+    return {
+        "platform": {
+            "total_users": total_users,
+            "active": active_users,
+            "inactive": inactive_users,
+            "expiring_soon": expiring_soon,
+        },
+        "this_month": {
+            "sales_count": sales_count,
+            "revenue": round(revenue_month, 2),
+            "new_clients": new_clients,
+            "followups_sent": followups_sent,
+            "followups_pending": followups_pending,
+        },
+        "monthly_trend": monthly_trend,
+        "consultoras": consultoras_breakdown,
+    }
