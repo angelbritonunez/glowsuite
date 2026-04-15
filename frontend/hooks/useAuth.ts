@@ -1,33 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import type { User, Session } from "@supabase/supabase-js"
 import { getMe } from "@/lib/api"
 import type { Role } from "@/types"
-
-const ALLOWED_ROUTES: Record<Role, string[]> = {
-  consultora: ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile"],
-  admin:      ["/admin/dashboard", "/admin/users", "/profile"],
-  operador:   ["/admin/users", "/profile"],
-}
-
-const DEFAULT_REDIRECT: Record<Role, string> = {
-  consultora: "/dashboard",
-  admin:      "/admin/dashboard",
-  operador:   "/admin/users",
-}
-
-function isAllowed(role: Role, pathname: string): boolean {
-  return (ALLOWED_ROUTES[role] ?? ALLOWED_ROUTES.consultora).some((p) => pathname.startsWith(p))
-}
+import { DEFAULT_REDIRECT, isAllowed } from "@/lib/auth-config"
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<Role>("consultora")
   const router = useRouter()
   const pathname = usePathname()
+
+  // Keep a ref so onAuthStateChange always reads the current pathname,
+  // not the stale value captured when the effect first ran.
+  const pathnameRef = useRef(pathname)
+  useEffect(() => { pathnameRef.current = pathname }, [pathname])
 
   useEffect(() => {
     const supabase = createClient()
@@ -55,7 +45,7 @@ export function useAuth() {
 
       if (profile.must_change_password) {
         router.push("/profile?mustChange=1")
-      } else if (!isAllowed(resolvedRole, pathname)) {
+      } else if (!isAllowed(resolvedRole, pathnameRef.current)) {
         router.push(DEFAULT_REDIRECT[resolvedRole] ?? "/dashboard")
       }
     }
@@ -74,7 +64,7 @@ export function useAuth() {
         const profile = await getMe(session.user.id)
         const resolvedRole = (profile.role as Role) || "consultora"
         setRole(resolvedRole)
-        if (!isAllowed(resolvedRole, pathname)) {
+        if (!isAllowed(resolvedRole, pathnameRef.current)) {
           router.push(DEFAULT_REDIRECT[resolvedRole] ?? "/dashboard")
         }
       } catch (e: any) {
