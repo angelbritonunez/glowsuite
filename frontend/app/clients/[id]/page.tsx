@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ChevronDown, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addPayment, getSalePayments, updateClient, deleteClient, deleteSale } from "@/lib/api"
+import { usePlan } from "@/hooks/usePlan"
 import type { Client, Sale, SaleItem, Payment, ClientFollowup } from "@/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ function FollowupTypeBadge({ type }: { type: string }) {
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { can } = usePlan()
 
   const [client, setClient] = useState<Client | null>(null)
   const [sales, setSales] = useState<Sale[]>([])
@@ -736,7 +738,7 @@ export default function ClientProfilePage() {
                               <span>Total</span>
                               <span>{formatCurrency(total)}</span>
                             </div>
-                            {sale.status !== "pagado" && (
+                            {can("basic") && sale.status !== "pagado" && (
                               <>
                                 {Number(sale.amount_paid) > 0 && (
                                   <div className="flex justify-between text-xs text-gray-400">
@@ -752,8 +754,8 @@ export default function ClientProfilePage() {
                             )}
                           </div>
 
-                          {/* Payment history */}
-                          {(salePayments[sale.id] ?? []).length > 0 && (
+                          {/* Payment history (Basic+) */}
+                          {can("basic") && (salePayments[sale.id] ?? []).length > 0 && (
                             <div className="pt-2 border-t border-gray-100">
                               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                                 Historial de pagos
@@ -775,8 +777,8 @@ export default function ClientProfilePage() {
                             </div>
                           )}
 
-                          {/* Abono action */}
-                          {sale.status !== "pagado" && (
+                          {/* Abono action (Basic+) */}
+                          {can("basic") && sale.status !== "pagado" && (
                             <div className="pt-1">
                               {abonoSaleId === sale.id ? (
                                 <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2.5">

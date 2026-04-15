@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { Users, UserCheck, UserX, Plus, RefreshCw, MessageCircle, ToggleLeft, ToggleRight, X } from "lucide-react"
 
-import type { Role, AdminUser } from "@/types"
+import type { Role, AdminUser, SubscriptionPlan } from "@/types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -72,6 +72,19 @@ const ROLE_STYLES: Record<Role, string> = {
   admin:      "bg-purple-50 text-purple-600",
   operador:   "bg-blue-50 text-blue-600",
 }
+
+const PLAN_LABELS: Record<SubscriptionPlan, string> = {
+  free:  "Free",
+  basic: "Basic",
+  pro:   "Pro",
+}
+
+const PLAN_STYLES: Record<SubscriptionPlan, string> = {
+  free:  "bg-gray-100 text-gray-500",
+  basic: "bg-blue-50 text-blue-600",
+  pro:   "bg-[#FFF0F4] text-[#E75480]",
+}
+
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -328,7 +341,11 @@ export default function OperadorUsersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [credentials, setCredentials] = useState<{ email: string; password: string; phone: string; firstName: string } | null>(null)
   const [search, setSearch]           = useState("")
-  const [togglingId, setTogglingId]   = useState<string | null>(null)
+  const [filterPlan, setFilterPlan]     = useState<"all" | SubscriptionPlan>("all")
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all")
+  const [filterRole, setFilterRole]     = useState<"all" | Role>("all")
+  const [togglingId, setTogglingId]     = useState<string | null>(null)
+  const [changingPlanId, setChangingPlanId] = useState<string | null>(null)
   const [editingNotes, setEditingNotes] = useState<{ id: string; value: string } | null>(null)
   const [resetResult, setResetResult]     = useState<{ id: string; password: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // user_id
@@ -370,6 +387,18 @@ export default function OperadorUsersPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleChangePlan = async (u: AdminUser, plan: SubscriptionPlan) => {
+    if (!userId || plan === u.subscription_plan) return
+    setChangingPlanId(u.id)
+    await fetch(`${API_URL}/admin/users/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-user-id": userId },
+      body: JSON.stringify({ subscription_plan: plan }),
+    })
+    setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, subscription_plan: plan } : x))
+    setChangingPlanId(null)
   }
 
   const handleToggleActive = async (u: AdminUser) => {
@@ -425,16 +454,30 @@ export default function OperadorUsersPage() {
   const activos  = users.filter((u) => u.is_active).length
   const inactivos = users.filter((u) => !u.is_active).length
 
-  const filteredUsers = search.trim()
-    ? users.filter((u) => {
-        const q = search.toLowerCase()
-        return (
-          (u.first_name || "").toLowerCase().includes(q) ||
-          (u.last_name  || "").toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q)
-        )
-      })
-    : users
+  const hasActiveFilters = search.trim() || filterPlan !== "all" || filterStatus !== "all" || filterRole !== "all"
+
+  const filteredUsers = users.filter((u) => {
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      const matchesSearch =
+        (u.first_name || "").toLowerCase().includes(q) ||
+        (u.last_name  || "").toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      if (!matchesSearch) return false
+    }
+    if (filterPlan !== "all" && u.subscription_plan !== filterPlan) return false
+    if (filterStatus === "active"   && !u.is_active) return false
+    if (filterStatus === "inactive" && u.is_active)  return false
+    if (filterRole !== "all" && u.role !== filterRole) return false
+    return true
+  })
+
+  const clearFilters = () => {
+    setSearch("")
+    setFilterPlan("all")
+    setFilterStatus("all")
+    setFilterRole("all")
+  }
 
   if (loading) {
     return (
@@ -483,20 +526,70 @@ export default function OperadorUsersPage() {
 
       {/* ── Table ── */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="border-b border-gray-50 px-5 py-4 flex items-center justify-between gap-4">
-          <span className="text-sm font-semibold text-gray-800">Usuarios</span>
-          <div className="relative w-64">
+        <div className="border-b border-gray-50 px-5 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-gray-800 mr-1">Usuarios</span>
+
+          {/* Search */}
+          <div className="relative">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre..."
-              className="w-full border border-gray-200 rounded-lg bg-gray-50 pl-9 pr-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
+              className="w-52 border border-gray-200 rounded-lg bg-gray-50 pl-8 pr-3 py-1.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
             />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
           </div>
+
+          {/* Plan filter */}
+          <select
+            value={filterPlan}
+            onChange={(e) => setFilterPlan(e.target.value as "all" | SubscriptionPlan)}
+            className="border border-gray-200 rounded-lg bg-gray-50 px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition cursor-pointer"
+          >
+            <option value="all">Plan: Todos</option>
+            <option value="free">Free</option>
+            <option value="basic">Basic</option>
+            <option value="pro">Pro</option>
+          </select>
+
+          {/* Status filter */}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as "all" | "active" | "inactive")}
+            className="border border-gray-200 rounded-lg bg-gray-50 px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition cursor-pointer"
+          >
+            <option value="all">Estado: Todos</option>
+            <option value="active">Activo</option>
+            <option value="inactive">Inactivo</option>
+          </select>
+
+          {/* Role filter — only visible to admin */}
+          {callerRole === "admin" && (
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value as "all" | Role)}
+              className="border border-gray-200 rounded-lg bg-gray-50 px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition cursor-pointer"
+            >
+              <option value="all">Rol: Todos</option>
+              <option value="consultora">Consultora</option>
+              <option value="operador">Operador</option>
+              <option value="admin">Admin</option>
+            </select>
+          )}
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition"
+            >
+              <X size={12} />
+              Limpiar
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -504,6 +597,7 @@ export default function OperadorUsersPage() {
               <tr className="border-b border-gray-50">
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Usuario</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Rol</th>
+                <th className="text-center px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Plan</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Membresía</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Último acceso</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Desde</th>
@@ -515,8 +609,8 @@ export default function OperadorUsersPage() {
             <tbody className="divide-y divide-gray-50">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-gray-400 text-sm">
-                    {search.trim() ? "No se encontraron usuarios con ese nombre." : "No hay usuarios registrados."}
+                  <td colSpan={9} className="text-center py-12 text-gray-400 text-sm">
+                    {hasActiveFilters ? "No hay usuarios que coincidan con los filtros aplicados." : "No hay usuarios registrados."}
                   </td>
                 </tr>
               ) : (
@@ -541,6 +635,25 @@ export default function OperadorUsersPage() {
                       <span className={`text-xs font-semibold rounded-full px-2.5 py-0.5 ${ROLE_STYLES[u.role]}`}>
                         {ROLE_LABELS[u.role]}
                       </span>
+                    </td>
+                    {/* Plan */}
+                    <td className="px-4 py-3 text-center">
+                      {u.role === "consultora" ? (
+                        <select
+                          value={u.subscription_plan}
+                          disabled={changingPlanId === u.id}
+                          onChange={(e) => handleChangePlan(u, e.target.value as SubscriptionPlan)}
+                          className="text-xs font-semibold rounded-full px-2.5 py-0.5 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E75480] disabled:opacity-50 transition"
+                          style={{ backgroundColor: u.subscription_plan === "pro" ? "#FFF0F4" : u.subscription_plan === "basic" ? "#EFF6FF" : "#F3F4F6",
+                                   color: u.subscription_plan === "pro" ? "#E75480" : u.subscription_plan === "basic" ? "#2563EB" : "#6B7280" }}
+                        >
+                          <option value="free">Free</option>
+                          <option value="basic">Basic</option>
+                          <option value="pro">Pro</option>
+                        </select>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     {/* Membresía */}
                     <td className="px-4 py-3 text-center">
