@@ -9,13 +9,13 @@ import type { Role } from "@/types"
 
 const ALLOWED_ROUTES: Record<Role, string[]> = {
   consultora: ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile"],
-  admin:      ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile", "/admin"],
+  admin:      ["/admin/dashboard", "/admin/users", "/profile"],
   operador:   ["/admin/users", "/profile"],
 }
 
 const DEFAULT_REDIRECT: Record<Role, string> = {
   consultora: "/dashboard",
-  admin:      "/admin/users",
+  admin:      "/admin/dashboard",
   operador:   "/admin/users",
 }
 
