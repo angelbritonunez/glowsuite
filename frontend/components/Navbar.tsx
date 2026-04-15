@@ -53,9 +53,10 @@ export default function Navbar({ role = "consultora" }: { role?: Role }) {
       {/* ── Centro: Links de navegación ── */}
       <nav className="flex items-center gap-1">
         {items.map((item) => {
-          const active  = pathname.startsWith(item.href)
-          const locked  = role === "consultora" && PLAN_TIER[plan] < PLAN_TIER[item.minPlan]
-          const badge   = PLAN_BADGE[item.minPlan] ?? null
+          const active   = pathname.startsWith(item.href)
+          const minPlan  = "minPlan" in item ? (item as { minPlan: string }).minPlan : "free"
+          const locked   = role === "consultora" && PLAN_TIER[plan] < PLAN_TIER[minPlan]
+          const badge    = PLAN_BADGE[minPlan] ?? null
           return (
             <Link
               key={item.href}
