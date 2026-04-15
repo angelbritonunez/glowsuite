@@ -738,7 +738,7 @@ export default function ClientProfilePage() {
                               <span>Total</span>
                               <span>{formatCurrency(total)}</span>
                             </div>
-                            {sale.status !== "pagado" && (
+                            {can("basic") && sale.status !== "pagado" && (
                               <>
                                 {Number(sale.amount_paid) > 0 && (
                                   <div className="flex justify-between text-xs text-gray-400">
@@ -754,8 +754,8 @@ export default function ClientProfilePage() {
                             )}
                           </div>
 
-                          {/* Payment history */}
-                          {(salePayments[sale.id] ?? []).length > 0 && (
+                          {/* Payment history (Basic+) */}
+                          {can("basic") && (salePayments[sale.id] ?? []).length > 0 && (
                             <div className="pt-2 border-t border-gray-100">
                               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                                 Historial de pagos
