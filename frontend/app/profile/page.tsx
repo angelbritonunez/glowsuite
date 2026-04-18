@@ -73,7 +73,7 @@ function ProfileContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const mustChange   = searchParams.get("mustChange") === "1"
-  const { can } = usePlan()
+  const { plan }     = usePlan()
 
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState("")
@@ -348,10 +348,19 @@ function ProfileContent() {
               {displayName}
             </h1>
             <p className="text-sm text-gray-400 mt-0.5">{email}</p>
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
               <span className="rounded-full text-xs font-medium px-2.5 py-0.5 bg-[#FFF0F4] text-[#C0395E] capitalize">
                 {role}
               </span>
+              {role !== "admin" && role !== "operador" && (
+                <span className={`rounded-full text-xs font-medium px-2.5 py-0.5 ${
+                  plan === "pro"   ? "bg-[#FFF0F4] text-[#E75480]" :
+                  plan === "basic" ? "bg-blue-50 text-blue-600" :
+                                     "bg-gray-100 text-gray-500"
+                }`}>
+                  {plan === "pro" ? "Pro (próximamente)" : plan === "basic" ? "Basic" : "Free"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -433,8 +442,8 @@ function ProfileContent() {
           </div>
         </div>
 
-        {/* ── Metas de negocio (consultoras Basic+) ── */}
-        {role !== "admin" && role !== "operador" && can("basic") && <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        {/* ── Metas de negocio (consultoras) ── */}
+        {role !== "admin" && role !== "operador" && <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="border-b border-gray-50 px-5 py-4">
             <span className="text-sm font-semibold text-gray-800">Metas de negocio</span>
             <p className="text-xs text-gray-400 mt-0.5">
