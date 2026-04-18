@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { usePlan } from "@/hooks/usePlan"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -70,10 +70,8 @@ function SaveButton({
 // ── Main component ────────────────────────────────────────────────────────────
 
 function ProfileContent() {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const mustChange   = searchParams.get("mustChange") === "1"
-  const { plan }     = usePlan()
+  const router   = useRouter()
+  const { plan } = usePlan()
 
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState("")
@@ -275,15 +273,7 @@ function ProfileContent() {
       setNewPassword("")
       setConfirmPassword("")
       setPasswordStatus({ type: "success", msg: "Contraseña actualizada correctamente." })
-      // Clear must_change_password flag if this was a forced change
-      if (mustChange) {
-        const supabase2 = createClient()
-        await supabase2.from("profiles").update({ must_change_password: false }).eq("id", userId)
-        const dest = role === "admin" ? "/admin/dashboard" : role === "operador" ? "/operador/users" : "/dashboard"
-        setTimeout(() => router.push(dest), 1500)
-      } else {
-        setTimeout(() => setPasswordStatus(null), 3000)
-      }
+      setTimeout(() => setPasswordStatus(null), 3000)
     }
     setSavingPassword(false)
   }
@@ -321,19 +311,6 @@ function ProfileContent() {
 
   return (
     <div className="space-y-4">
-
-      {/* ── Banner cambio de contraseña obligatorio ── */}
-      {mustChange && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
-          <span className="text-amber-500 text-lg leading-none mt-0.5">⚠️</span>
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Debes cambiar tu contraseña</p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              Por seguridad, cambia la contraseña temporal antes de continuar. Ve a la sección <strong>Seguridad</strong> más abajo.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* ── Profile header ── */}
       <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5">
