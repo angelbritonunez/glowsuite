@@ -23,7 +23,7 @@ export default function AuthCard({ icon, title, subtitle, caption, children }: A
       </div>
 
       {/* Right column */}
-      <div className="flex-1 flex flex-col justify-center bg-white px-10 py-10" style={{ padding: "2.5rem" }}>
+      <div className="flex-1 flex flex-col justify-center bg-white p-10">
         {children}
       </div>
     </div>
