@@ -20,10 +20,14 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [confirmed, setConfirmed] = useState(false)
 
   useEffect(() => {
     if (searchParams.get("desactivado") === "1") {
       setError("Tu cuenta está desactivada. Comunícate con tu administrador.")
+    }
+    if (searchParams.get("confirmed") === "1") {
+      setConfirmed(true)
     }
   }, [searchParams])
 
@@ -68,6 +72,12 @@ function LoginForm() {
           <h2 className="text-2xl font-semibold text-gray-800">Bienvenida de nuevo</h2>
           <p className="text-sm text-gray-500 mt-1 mb-6">Ingresa tus datos para continuar</p>
         </div>
+
+        {confirmed && (
+          <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 text-center">
+            ✓ ¡Correo confirmado! Inicia sesión para entrar a GlowSuite.
+          </div>
+        )}
 
         <AuthInput
           label="Correo electrónico"
