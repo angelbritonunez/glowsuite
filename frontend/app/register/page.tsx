@@ -52,7 +52,7 @@ export default function RegisterPage() {
       password,
       options: {
         data: { first_name: nombre, last_name: apellido, phone: telefono },
-        emailRedirectTo: `${window.location.origin}/login?confirmed=1`,
+        emailRedirectTo: `${window.location.origin}/auth/confirmed`,
       },
     })
 
