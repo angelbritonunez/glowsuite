@@ -2,8 +2,8 @@
 
 import { useEffect } from "react"
 
-const PORTAL_URL = "https://glowsuite-crm.vercel.app/login"
-const REGISTER_URL = "https://glowsuite-crm.vercel.app/register"
+const PORTAL_URL = "/login"
+const REGISTER_URL = "/register"
 
 export default function LandingPage() {
   useEffect(() => {
