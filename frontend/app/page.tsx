@@ -419,9 +419,9 @@ export default function LandingPage() {
                 <div className="precio-feature">Reporte de ganancias</div>
                 <div className="precio-feature precio-feature-disabled">Sin métricas avanzadas</div>
               </div>
-              <a href={PORTAL_URL} className="btn-precio btn-precio-white">
-                Entrar a GlowSuite
-              </a>
+              <span className="btn-precio btn-precio-white" style={{ opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" }}>
+                Disponible próximamente
+              </span>
             </div>
             {/* Pro */}
             <div className="precio-card fade-up fade-up-delay-2">
@@ -441,9 +441,9 @@ export default function LandingPage() {
                   Próximamente
                 </div>
               </div>
-              <a href={REGISTER_URL} className="btn-precio btn-precio-outline">
-                Elegir Pro
-              </a>
+              <span className="btn-precio btn-precio-outline" style={{ opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" }}>
+                Disponible próximamente
+              </span>
             </div>
           </div>
         </div>
