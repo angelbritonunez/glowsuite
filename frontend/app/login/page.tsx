@@ -59,7 +59,7 @@ function LoginForm() {
   return (
     <AuthCard
       icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite"
+      title="GlowSuite CRM"
       subtitle="Tu negocio, organizado."
       caption="Para consultoras independientes"
     >

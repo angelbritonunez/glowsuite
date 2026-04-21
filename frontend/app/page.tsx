@@ -52,7 +52,7 @@ export default function LandingPage() {
       {/* NAV */}
       <nav>
         <div className="nav-logo">
-          <img src="/logo.svg" alt="GlowSuite" height="36" />
+          <img src="/logo.svg" alt="GlowSuite CRM" height="36" />
         </div>
         <div className="nav-links">
           <a href="#problema">El problema</a>
@@ -61,7 +61,7 @@ export default function LandingPage() {
           <a href="#precios">Precios</a>
         </div>
         <a href={PORTAL_URL} className="btn-nav">
-          Entrar a GlowSuite
+          Entrar a GlowSuite CRM
         </a>
       </nav>
 
@@ -76,12 +76,12 @@ export default function LandingPage() {
               <em>en un solo lugar.</em>
             </h1>
             <p className="hero-sub">
-              GlowSuite elimina el caos de manejar tu consultora desde mil maneras distintas. Seguimientos,
+              GlowSuite CRM elimina el caos de manejar tu consultora desde mil maneras distintas. Seguimientos,
               cobros y clientas — todo en un solo lugar, sin complicaciones.
             </p>
             <div className="hero-actions">
               <a href={PORTAL_URL} className="btn-primary">
-                Entrar a GlowSuite
+                Entrar a GlowSuite CRM
               </a>
               <a href="#como" className="btn-ghost">
                 Ver cómo funciona
@@ -136,7 +136,7 @@ export default function LandingPage() {
         <div className="section-inner">
           <div className="section-label fade-up">El problema real</div>
           <h2 className="section-title fade-up fade-up-delay-1">
-            Antes de GlowSuite,
+            Antes de GlowSuite CRM,
             <br />
             ¿cómo manejabas todo esto?
           </h2>
@@ -174,12 +174,12 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="problema-after fade-up fade-up-delay-1">
-              <h3>Con GlowSuite, todo cambia</h3>
+              <h3>Con GlowSuite CRM, todo cambia</h3>
               {[
                 "Todas tus clientas en un solo lugar, con su historial completo",
                 "El sistema te dice exactamente a quién contactar hoy",
                 "Cobros pendientes visibles de un vistazo, con mensaje ya listo",
-                "Si sabes usar WhatsApp, sabes usar GlowSuite",
+                "Si sabes usar WhatsApp, sabes usar GlowSuite CRM",
                 "Accede desde cualquier dispositivo, sin instalar nada",
               ].map((text) => (
                 <div className="after-item" key={text}>
@@ -205,7 +205,7 @@ export default function LandingPage() {
       {/* FEATURES */}
       <section id="features">
         <div className="section-inner">
-          <div className="section-label fade-up">Lo que hace GlowSuite</div>
+          <div className="section-label fade-up">Lo que hace GlowSuite CRM</div>
           <h2 className="section-title fade-up fade-up-delay-1">
             Cinco herramientas.
             <br />
@@ -294,7 +294,7 @@ export default function LandingPage() {
             no en horas.
           </h2>
           <p className="section-sub fade-up fade-up-delay-2">
-            Si sabes usar WhatsApp, sabes usar GlowSuite. Sin tutoriales largos. Sin curva de
+            Si sabes usar WhatsApp, sabes usar GlowSuite CRM. Sin tutoriales largos. Sin curva de
             aprendizaje.
           </p>
           <div className="steps">
@@ -318,7 +318,7 @@ export default function LandingPage() {
               <div className="step-num">3</div>
               <h3>El sistema trabaja por ti</h3>
               <p>
-                Cada día, GlowSuite te dice a quién escribirle, qué cobrar y cómo va tu negocio. Tú
+                Cada día, GlowSuite CRM te dice a quién escribirle, qué cobrar y cómo va tu negocio. Tú
                 solo das el siguiente paso.
               </p>
             </div>
@@ -339,7 +339,7 @@ export default function LandingPage() {
             className="section-sub fade-up fade-up-delay-2"
             style={{ margin: "14px auto 56px" }}
           >
-            Las personas detrás de GlowSuite entienden el negocio porque lo viven.
+            Las personas detrás de GlowSuite CRM entienden el negocio porque lo viven.
           </p>
           <div className="equipo-grid">
             {[
@@ -468,9 +468,9 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer>
         <div className="footer-logo">
-          <img src="/logo.svg" alt="GlowSuite" height="28" />
+          <img src="/logo.svg" alt="GlowSuite CRM" height="28" />
         </div>
-        <div className="footer-copy">© 2026 GlowSuite · Hecho con ♥ para consultoras de RD</div>
+        <div className="footer-copy">© 2026 GlowSuite CRM · Hecho con ♥ para consultoras de RD</div>
       </footer>
     </div>
   )

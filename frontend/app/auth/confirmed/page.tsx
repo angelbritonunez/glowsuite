@@ -19,7 +19,7 @@ export default function ConfirmedPage() {
   return (
     <AuthCard
       icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite"
+      title="GlowSuite CRM"
       subtitle="Tu negocio, organizado."
       caption="Para consultoras independientes"
     >
@@ -30,7 +30,7 @@ export default function ConfirmedPage() {
         <div>
           <h2 className="text-xl font-semibold text-gray-800">¡Correo confirmado!</h2>
           <p className="text-sm text-gray-500 mt-2">
-            Tu cuenta está activa. Inicia sesión con tu correo y contraseña para entrar a GlowSuite.
+            Tu cuenta está activa. Inicia sesión con tu correo y contraseña para entrar a GlowSuite CRM.
           </p>
         </div>
         <button

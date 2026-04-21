@@ -11,19 +11,19 @@ const dmSans = DM_Sans({
 })
 
 export const metadata = {
-  title: "GlowSuite — El CRM para consultoras de belleza",
+  title: "GlowSuite CRM — Para consultoras de belleza",
   description:
     "Elimina el caos de tu consultora. Seguimientos automáticos 2+2+2, cobros pendientes y clientas organizadas — todo en un solo lugar.",
-  metadataBase: new URL("https://glowsuite-crm.vercel.app"),
+  metadataBase: new URL("https://glowsuitecrm.com"),
   icons: {
     icon: "/favicon.svg",
   },
   openGraph: {
-    title: "GlowSuite — El CRM para consultoras de belleza",
+    title: "GlowSuite CRM — Para consultoras de belleza",
     description:
       "Elimina el caos de tu consultora. Seguimientos automáticos, cobros y clientas — todo en un solo lugar.",
-    url: "https://glowsuite-crm.vercel.app",
-    siteName: "GlowSuite",
+    url: "https://glowsuitecrm.com",
+    siteName: "GlowSuite CRM",
     locale: "es_DO",
     type: "website",
   },

@@ -15,7 +15,7 @@ const PLAN_COLORS: Record<SubscriptionPlan, string> = {
   pro:   "bg-[#FFF0F4] text-[#E75480]",
 }
 
-const WA_MESSAGE_BASIC = "Hola, me gustaría actualizar mi plan GlowSuite a Basic para acceder a más funciones. ¿Cómo procedo?"
+const WA_MESSAGE_BASIC = "Hola, me gustaría actualizar mi plan GlowSuite CRM a Basic para acceder a más funciones. ¿Cómo procedo?"
 const ADMIN_PHONE = "18499259226"
 
 export default function UpgradeBanner({ requiredPlan }: { requiredPlan: Exclude<SubscriptionPlan, "free"> }) {
