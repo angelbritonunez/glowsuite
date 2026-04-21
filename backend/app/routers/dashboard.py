@@ -65,14 +65,14 @@ def get_dashboard(x_user_id: Optional[str] = Header(None)):
         start_of_month_date = now.replace(day=1).strftime("%Y-%m-%d")
 
         sales_res = supabase.table("sales") \
-            .select("id, total, profit, amount_paid, status, sale_date") \
+            .select("id, total, profit, status, sale_date") \
             .eq("user_id", x_user_id) \
             .gte("sale_date", start_of_month_date) \
             .execute()
 
         sales = sales_res.data or []
         ventas_mes = len(sales)
-        revenue_mes = sum(float(s.get("amount_paid") or 0) for s in sales)
+        revenue_mes = sum(float(s.get("total") or 0) for s in sales)
         profit_mes = sum(float(s.get("profit") or 0) for s in sales)
 
         all_clients_res = supabase.table("clients") \
