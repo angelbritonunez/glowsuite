@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase"
 import type { User, Session } from "@supabase/supabase-js"
 import { getMe } from "@/lib/api"
 import type { Role } from "@/types"
-import { DEFAULT_REDIRECT, isAllowed } from "@/lib/auth-config"
+import { DEFAULT_REDIRECT, isAllowed, PUBLIC_ROUTES } from "@/lib/auth-config"
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -43,7 +43,7 @@ export function useAuth() {
       const resolvedRole = (profile.role as Role) || "consultora"
       setRole(resolvedRole)
 
-      if (!isAllowed(resolvedRole, pathnameRef.current)) {
+      if (!PUBLIC_ROUTES.includes(pathnameRef.current) && !isAllowed(resolvedRole, pathnameRef.current)) {
         router.push(DEFAULT_REDIRECT[resolvedRole] ?? "/dashboard")
       }
     }
@@ -62,7 +62,7 @@ export function useAuth() {
         const profile = await getMe(session.user.id)
         const resolvedRole = (profile.role as Role) || "consultora"
         setRole(resolvedRole)
-        if (!isAllowed(resolvedRole, pathnameRef.current)) {
+        if (!PUBLIC_ROUTES.includes(pathnameRef.current) && !isAllowed(resolvedRole, pathnameRef.current)) {
           router.push(DEFAULT_REDIRECT[resolvedRole] ?? "/dashboard")
         }
       } catch (e: any) {
