@@ -40,7 +40,14 @@ export default function UpdatePasswordPage() {
     setLoading(false)
 
     if (error) {
-      setError(error.message)
+      const msg = error.message.toLowerCase()
+      if (msg.includes("different from the old password")) {
+        setError("La nueva contraseña debe ser diferente a la anterior.")
+      } else if (msg.includes("at least")) {
+        setError("La contraseña debe tener al menos 6 caracteres.")
+      } else {
+        setError("Ocurrió un error. Intenta de nuevo.")
+      }
     } else {
       setDone(true)
       setTimeout(() => router.push("/login"), 3000)
