@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, Sparkles } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowLeft } from "lucide-react"
 import AuthCard from "@/components/ui/AuthCard"
 import AuthInput from "@/components/ui/AuthInput"
 import AuthButton from "@/components/ui/AuthButton"
@@ -21,11 +21,29 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const [forgotMode, setForgotMode] = useState(false)
+  const [resetEmail, setResetEmail] = useState("")
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+
   useEffect(() => {
     if (searchParams.get("desactivado") === "1") {
       setError("Tu cuenta está desactivada. Comunícate con tu administrador.")
     }
   }, [searchParams])
+
+  const handleForgotPassword = async () => {
+    setResetLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: "https://glowsuitecrm.com/auth/update-password",
+    })
+    setResetLoading(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setResetSent(true)
+    }
+  }
 
   const handleLogin = async () => {
     setLoading(true)
@@ -54,6 +72,62 @@ function LoginForm() {
         )
       }
     }
+  }
+
+  if (forgotMode) {
+    return (
+      <AuthCard
+        icon={<Sparkles size={32} color="white" />}
+        title="GlowSuite CRM"
+        subtitle="Tu negocio, organizado."
+        caption="Para vendedoras independientes"
+      >
+        <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
+          <button
+            onClick={() => { setForgotMode(false); setResetSent(false); setError("") }}
+            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 w-fit"
+          >
+            <ArrowLeft size={14} /> Volver
+          </button>
+
+          {resetSent ? (
+            <div className="flex flex-col items-center gap-4 text-center py-4">
+              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+                <Mail size={28} className="text-green-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Revisa tu correo</h2>
+                <p className="text-sm text-gray-500 mt-2">
+                  Enviamos un link a <strong>{resetEmail}</strong> para restablecer tu contraseña.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-800">¿Olvidaste tu contraseña?</h2>
+                <p className="text-sm text-gray-500 mt-1 mb-6">Te enviamos un link para restablecerla</p>
+              </div>
+
+              <AuthInput
+                label="Correo electrónico"
+                type="email"
+                placeholder="ejemplo@correo.com"
+                value={resetEmail}
+                onChange={setResetEmail}
+                leftIcon={<Mail size={16} />}
+              />
+
+              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+              <AuthButton onClick={handleForgotPassword} loading={resetLoading}>
+                Enviar link
+              </AuthButton>
+            </>
+          )}
+        </div>
+      </AuthCard>
+    )
   }
 
   return (
@@ -113,7 +187,10 @@ function LoginForm() {
 
         <hr className="my-4 border-gray-200" />
 
-        <p className="text-sm text-gray-400 hover:underline text-center cursor-pointer">
+        <p
+          className="text-sm text-gray-400 hover:underline text-center cursor-pointer"
+          onClick={() => { setForgotMode(true); setError(""); setResetEmail(email) }}
+        >
           ¿Olvidaste tu contraseña?
         </p>
 
