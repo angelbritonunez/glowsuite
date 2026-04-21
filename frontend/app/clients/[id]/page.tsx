@@ -154,6 +154,7 @@ export default function ClientProfilePage() {
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null)
   const [abonoAmount, setAbonoAmount] = useState<string>("")
   const [abonoType, setAbonoType] = useState<"efectivo" | "transferencia">("efectivo")
+  const [abonoDate, setAbonoDate] = useState<string>("")
   const [savingAbono, setSavingAbono] = useState(false)
   const [abonoError, setAbonoError] = useState<string | null>(null)
 
@@ -167,7 +168,11 @@ export default function ClientProfilePage() {
     setSavingAbono(true)
     setAbonoError(null)
     try {
-      await addPayment(abonoSaleId, { amount, payment_type: abonoType })
+      await addPayment(abonoSaleId, {
+        amount,
+        payment_type: abonoType,
+        ...(abonoDate ? { payment_date: abonoDate } : {}),
+      })
 
       // Refresh sales and the payment history for this sale in parallel
       const supabase = createClient()
@@ -183,6 +188,7 @@ export default function ClientProfilePage() {
       setSalePayments((prev) => ({ ...prev, [abonoSaleId]: paymentsRes.payments || [] }))
       setAbonoSaleId(null)
       setAbonoAmount("")
+      setAbonoDate("")
     } catch {
       setAbonoError("No se pudo registrar el abono.")
     } finally {
@@ -804,6 +810,16 @@ export default function ClientProfilePage() {
                                     }}
                                     className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
                                   />
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Fecha del abono</label>
+                                    <input
+                                      type="date"
+                                      value={abonoDate}
+                                      max={new Date().toLocaleDateString("en-CA", { timeZone: "America/Santo_Domingo" })}
+                                      onChange={(e) => setAbonoDate(e.target.value)}
+                                      className="w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#E75480] focus:border-transparent transition"
+                                    />
+                                  </div>
                                   <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
                                     {(["efectivo", "transferencia"] as const).map((t) => (
                                       <button
@@ -827,7 +843,7 @@ export default function ClientProfilePage() {
                                       {savingAbono ? "Guardando..." : "Confirmar abono"}
                                     </button>
                                     <button
-                                      onClick={() => { setAbonoSaleId(null); setAbonoAmount(""); setAbonoError(null) }}
+                                      onClick={() => { setAbonoSaleId(null); setAbonoAmount(""); setAbonoDate(""); setAbonoError(null) }}
                                       className="text-xs text-gray-400 hover:text-gray-600 px-3"
                                     >
                                       Cancelar
@@ -836,7 +852,12 @@ export default function ClientProfilePage() {
                                 </div>
                               ) : (
                                 <button
-                                  onClick={() => { setAbonoSaleId(sale.id); setAbonoAmount(""); setAbonoError(null) }}
+                                  onClick={() => {
+                                    setAbonoSaleId(sale.id)
+                                    setAbonoAmount("")
+                                    setAbonoDate(new Date().toLocaleDateString("en-CA", { timeZone: "America/Santo_Domingo" }))
+                                    setAbonoError(null)
+                                  }}
                                   className="text-xs text-[#E75480] font-semibold hover:underline"
                                 >
                                   + Registrar abono
