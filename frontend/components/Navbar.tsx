@@ -79,7 +79,7 @@ export default function Navbar({ role = "consultora" }: { role?: Role }) {
             <Sparkles size={16} stroke="white" strokeWidth={2} />
           </div>
           <span className="font-semibold text-gray-900 text-base tracking-tight">
-            GlowSuite
+            GlowSuite CRM
           </span>
         </Link>
 

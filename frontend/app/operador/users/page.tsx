@@ -282,7 +282,7 @@ function CredentialsModal({ email, password, phone, firstName, onClose }: {
 }) {
   const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : "/login"
   const waMessage = [
-    `¡Hola, ${firstName}! Te damos la bienvenida a GlowSuite 💄`,
+    `¡Hola, ${firstName}! Te damos la bienvenida a GlowSuite CRM 💄`,
     ``,
     `Tus credenciales de acceso son:`,
     `📧 Email: ${email}`,

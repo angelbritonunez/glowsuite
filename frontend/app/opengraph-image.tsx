@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og"
 
 export const runtime = "edge"
-export const alt = "GlowSuite — El CRM para consultoras de belleza"
+export const alt = "GlowSuite CRM — Para consultoras de belleza"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -102,7 +102,7 @@ export default function Image() {
                 lineHeight: 1,
               }}
             >
-              Suite
+              Suite CRM
             </span>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function Image() {
             letterSpacing: 0.2,
           }}
         >
-          glowsuite-crm.vercel.app
+          glowsuitecrm.com
         </div>
       </div>
     ),
