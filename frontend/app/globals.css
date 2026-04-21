@@ -403,6 +403,16 @@ html { scroll-behavior: smooth; }
   max-width: 480px; margin: 0 auto 40px;
 }
 
+/* FOOTER LINKS */
+.landing-page .footer-links {
+  display: flex; gap: 24px;
+}
+.landing-page .footer-links a {
+  font-size: 0.82rem; color: var(--text-muted);
+  text-decoration: none; transition: color 0.2s;
+}
+.landing-page .footer-links a:hover { color: var(--pink); }
+
 /* FOOTER */
 .landing-page footer {
   background: var(--bg-alt);

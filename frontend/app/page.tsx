@@ -470,6 +470,11 @@ export default function LandingPage() {
         <div className="footer-logo">
           <img src="/logo.svg" alt="GlowSuite CRM" height="28" />
         </div>
+        <div className="footer-links">
+          <a href="/terminos">Términos</a>
+          <a href="/privacidad">Privacidad</a>
+          <a href="/ayuda">Ayuda</a>
+        </div>
         <div className="footer-copy">© 2026 GlowSuite CRM · Hecho con ♥ para vendedoras de RD</div>
       </footer>
     </div>

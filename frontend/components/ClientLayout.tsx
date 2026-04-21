@@ -8,7 +8,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { user, role } = useAuth()
   const pathname = usePathname()
 
-  if (pathname === "/") {
+  const publicPages = ["/", "/terminos", "/privacidad", "/ayuda"]
+  if (publicPages.includes(pathname)) {
     return <>{children}</>
   }
 
