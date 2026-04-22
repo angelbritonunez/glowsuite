@@ -57,7 +57,7 @@ function LoginForm() {
       setError(error.message)
     } else {
       try {
-        const profile = await getMe(data.user.id)
+        const profile = await getMe()
         const { role } = profile
         if (role === "admin" || role === "operador") {
           router.push("/operador/users")
