@@ -5,9 +5,9 @@ const PORTAL_URL = "/login"
 const REGISTER_URL = "/register"
 
 export const metadata: Metadata = {
-  title: "GlowSuite CRM — CRM para vendedoras independientes en República Dominicana",
+  title: "GlowSuite CRM — CRM para consultoras de belleza en RD",
   description:
-    "Organiza tus clientes, ventas y seguimientos con el sistema 2+2+2. Diseñado para consultoras de belleza en RD. Gratis para empezar.",
+    "Organiza tus clientes, ventas y seguimientos con el sistema 2+2+2. Para consultoras de Mary Kay, Yanbal, Avon y venta directa en RD. Empieza gratis hoy.",
   alternates: { canonical: "https://www.glowsuitecrm.com" },
 }
 
