@@ -15,8 +15,8 @@ const getAuthHeaders = async (json = false, token?: string, userId?: string): Pr
   }
 
   return {
-    "x-user-id": uid,
-    "Authorization": `Bearer ${accessToken}`,
+    "x-user-id": uid!,
+    "Authorization": `Bearer ${accessToken!}`,
     ...(json ? { "Content-Type": "application/json" } : {}),
   }
 }
