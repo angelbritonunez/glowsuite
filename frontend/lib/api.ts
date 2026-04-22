@@ -2,21 +2,29 @@ import { createClient as createSupabaseClient } from "@/lib/supabase"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
-const getAuthHeaders = async (json = false): Promise<Record<string, string>> => {
-  const supabase = createSupabaseClient()
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error || !session) throw new Error("Usuario no autenticado")
+const getAuthHeaders = async (json = false, token?: string, userId?: string): Promise<Record<string, string>> => {
+  let accessToken = token
+  let uid = userId
+
+  if (!accessToken || !uid) {
+    const supabase = createSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error("Usuario no autenticado")
+    accessToken = session.access_token
+    uid = session.user.id
+  }
+
   return {
-    "x-user-id": session.user.id,
-    "Authorization": `Bearer ${session.access_token}`,
+    "x-user-id": uid,
+    "Authorization": `Bearer ${accessToken}`,
     ...(json ? { "Content-Type": "application/json" } : {}),
   }
 }
 
 // AUTH
-export const getMe = async (): Promise<{ role: string; subscription_plan: string }> => {
+export const getMe = async (token?: string, userId?: string): Promise<{ role: string; subscription_plan: string }> => {
   const res = await fetch(`${API_URL}/auth/me`, {
-    headers: await getAuthHeaders(),
+    headers: await getAuthHeaders(false, token, userId),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
