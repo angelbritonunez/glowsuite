@@ -2,7 +2,14 @@ import { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Términos de uso",
-  robots: { index: false },
+  description: "Condiciones de uso de GlowSuite CRM: registro, planes, propiedad intelectual y política de no afiliación con empresas de venta directa.",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: "https://glowsuitecrm.com/terminos",
+  },
 }
 
 export default function TerminosPage() {
