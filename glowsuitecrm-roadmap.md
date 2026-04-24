@@ -1,6 +1,6 @@
 # GlowSuite — Roadmap de Producto
 
-**Última actualización:** 2026-04-22 (SEO validado en prod + title/description optimizados)
+**Última actualización:** 2026-04-24 (blog SEO con 4 artículos + JSON-LD FAQPage en /ayuda)
 **Fase actual:** Piloto activo — plan Free disponible al público, Basic/Pro pendientes de precio
 
 ---
@@ -32,6 +32,7 @@
 | Autenticación y registro | ✅ Activo |
 | Landing page | ✅ Activo |
 | SEO + metadata + robots/sitemap | ✅ Activo |
+| Blog SEO (4 artículos + JSON-LD) | ✅ Activo |
 | Posicionamiento legal (no afiliación) | ✅ Activo |
 | Core CRM (clientes, ventas, seguimientos) | ✅ Activo |
 | Métricas y dashboard | ✅ Activo |
@@ -155,10 +156,33 @@ Metadata estructurada, robots.txt, sitemap.xml, JSON-LD y patrón server wrapper
 - `title`: "GlowSuite CRM — CRM para consultoras de belleza en RD" (53 chars — optimizado para SERPs)
 - `description`: "Organiza tus clientes, ventas y seguimientos con el sistema 2+2+2. Para consultoras de Mary Kay, Yanbal, Avon y venta directa en RD. Empieza gratis hoy." (153 chars)
 
-**Rutas indexables:** `/`, `/register`, `/terminos`, `/privacidad`, `/ayuda`
+**Rutas indexables:** `/`, `/register`, `/blog`, `/blog/[slug]`, `/ayuda`, `/terminos`, `/privacidad`
 **Rutas bloqueadas:** `/dashboard`, `/clients`, `/sales`, `/followups`, `/metrics`, `/profile`, `/admin`, `/operador`, `/auth/`
 
 **Validación en producción (2026-04-22):** title, description, keywords, canonical, robots, googlebot, OG completo, Twitter card, JSON-LD, robots.txt y sitemap.xml — todos confirmados. Sin hreflang (sitio monolingüe, no crítico).
+
+---
+
+### Blog SEO — 4 artículos + JSON-LD ✅
+
+Contenido editorial en `/blog` orientado a SEO long-tail para consultoras de venta directa en RD. Rich snippets en Google para `/ayuda`.
+
+**Rutas:**
+- `/blog` — índice con grid de 4 artículos (Server Component, `metadata` + canonical)
+- `/blog/[slug]` — artículos individuales (`generateStaticParams`, `generateMetadata`, JSON-LD `Article`, OG `article`)
+- `/ayuda` — reemplazada con diseño Tailwind + JSON-LD `FAQPage` (20 preguntas en 6 categorías)
+
+**Artículos publicados (2026-04-22):**
+1. `como-organizar-clientes-mary-kay` — Organización (6 min)
+2. `sistema-2-2-2-seguimiento-post-venta` — Ventas (7 min)
+3. `como-llevar-cuentas-negocio-venta-directa` — Finanzas (8 min)
+4. `como-saber-quien-te-debe-dinero-belleza` — Cobros (5 min)
+
+**Fuente de verdad:** `frontend/app/blog/posts.ts` (sincronizar con `sitemap.ts` al agregar artículos)
+
+**Dependencia:** `@tailwindcss/typography` (dev) — activado con `@plugin "@tailwindcss/typography"` en `globals.css`
+
+**Acceso:** link "Blog" en el footer de la landing. `/blog` agregado a `PUBLIC_ROUTES` con check `startsWith` para cubrir subrutas.
 
 ---
 
@@ -335,4 +359,4 @@ Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack 
 
 ---
 
-*Documento generado por Claude Code — refleja el estado del branch `develop` al 2026-04-22.*
+*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-24.*

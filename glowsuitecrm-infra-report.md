@@ -22,7 +22,8 @@
 - All interactive pages use the `page.tsx` (server) + `*Client.tsx` (client) pattern introduced for SEO
 - `app/robots.ts` and `app/sitemap.ts` — Next.js convention files, statically rendered
 - `app/opengraph-image.tsx` — Edge Runtime (`ImageResponse`)
-- No `getServerSideProps`, `getStaticProps`, or `generateStaticParams`
+- No `getServerSideProps`, `getStaticProps`
+- `generateStaticParams` used in `app/blog/[slug]/page.tsx` — 4 blog posts pre-rendered at build time
 - No `revalidate` directives (no ISR)
 
 ### Vercel-Specific Features
@@ -202,6 +203,7 @@ SUPABASE_KEY
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.x",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -279,7 +281,13 @@ glowsuite/
     │   │   ├── callback/          (Supabase OAuth redirect)
     │   │   ├── confirmed/         (post-signup signOut)
     │   │   └── update-password/   (password reset flow)
-    │   ├── ayuda/
+    │   ├── ayuda/                 (Server Component — JSON-LD FAQPage)
+    │   ├── blog/
+    │   │   ├── [slug]/
+    │   │   │   ├── page.tsx       (generateStaticParams + generateMetadata + JSON-LD Article)
+    │   │   │   └── content.tsx    (JSX de los 4 artículos)
+    │   │   ├── page.tsx           (índice blog — Server Component)
+    │   │   └── posts.ts           (registro central de posts)
     │   ├── clients/
     │   │   ├── [id]/
     │   │   ├── new/
@@ -402,4 +410,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-22 (SEO refactor — Server Components introducidos; title/description landing optimizados; SEO validado en producción). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-04-24 (blog SEO — `app/blog/` agregado con `generateStaticParams`; `@tailwindcss/typography` como devDependency; directorio actualizado). Previous update: 2026-04-22 (SEO refactor). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*

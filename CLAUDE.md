@@ -49,10 +49,15 @@ Las páginas con `"use client"` no pueden exportar `metadata` de Next.js. El pat
 - `app/foo/FooClient.tsx` — el componente original con `"use client"` (hooks, estado, efectos)
 - `app/LandingEffects.tsx` — efectos DOM de la landing (tab slider, fade-up) extraídos como client component; `app/page.tsx` es servidor
 - `app/robots.ts` — genera `/robots.txt`; desindexar todas las rutas autenticadas
-- `app/sitemap.ts` — genera `/sitemap.xml`; solo las 4 rutas públicas
+- `app/sitemap.ts` — genera `/sitemap.xml`; rutas públicas + `/blog` + 4 slugs de artículos
 - `app/opengraph-image.tsx` — imagen OG 1200×630 generada con `ImageResponse`
+- `app/blog/posts.ts` — fuente de verdad de artículos (slug, title, excerpt, metadata). Sincronizar con `sitemap.ts` al agregar posts.
+- `app/blog/[slug]/page.tsx` — `generateStaticParams` + `generateMetadata` + JSON-LD `Article`
+- `app/ayuda/page.tsx` — Server Component con JSON-LD `FAQPage` (rich snippets Google)
 
 **Rutas autenticadas** → `robots: { index: false, follow: false }` en su `page.tsx` server wrapper.
+
+**JSON-LD por tipo:** landing → `SoftwareApplication`, artículos → `Article`, ayuda → `FAQPage`.
 
 **Guías de longitud para metadata:**
 - `title`: máximo ~55 caracteres (Google trunca a ~60). Ejemplo actual landing: *"GlowSuite CRM — CRM para consultoras de belleza en RD"* (53 chars)
@@ -119,7 +124,7 @@ Three tiers: `free` | `basic` | `pro`. Stored in `profiles.subscription_plan`.
 - **Recuperación de contraseña:** llama `supabase.auth.resetPasswordForEmail()` con `redirectTo: https://glowsuitecrm.com/auth/update-password`
 - **Nueva contraseña:** `app/auth/update-password/page.tsx` — Supabase crea sesión automáticamente desde el token del email; la ruta está en `PUBLIC_ROUTES` para evitar redirect al dashboard
 - **Confirmación de cuenta:** `app/auth/confirmed/page.tsx` — hace `signOut()` para evitar auto-login
-- **Rutas públicas:** definidas en `lib/auth-config.ts` → `PUBLIC_ROUTES`. Cualquier ruta auth nueva debe agregarse ahí o `useAuth` redirige al dashboard
+- **Rutas públicas:** definidas en `lib/auth-config.ts` → `PUBLIC_ROUTES`. Cualquier ruta pública nueva debe agregarse ahí o `useAuth` redirige al dashboard. El check usa `startsWith`, por lo que agregar `/blog` cubre también `/blog/[slug]`
 - **Roles:** `consultora` | `admin` | `operador`. Definidos en `lib/auth-config.ts` → `ALLOWED_ROUTES` y `DEFAULT_REDIRECT`. Guardados en `profiles.role`
   - `consultora` → redirige a `/dashboard`
   - `admin` → redirige a `/admin/dashboard`
