@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { Sparkles, CheckCircle } from "lucide-react"
+import { CheckCircle } from "lucide-react"
 import AuthCard from "@/components/ui/AuthCard"
 
 export default function ConfirmedPage() {
@@ -18,8 +18,6 @@ export default function ConfirmedPage() {
 
   return (
     <AuthCard
-      icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite CRM"
       subtitle="Tu negocio, organizado."
       caption="Para vendedoras independientes"
     >

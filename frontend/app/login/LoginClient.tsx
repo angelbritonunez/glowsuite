@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowLeft } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import AuthCard from "@/components/ui/AuthCard"
 import AuthInput from "@/components/ui/AuthInput"
 import AuthButton from "@/components/ui/AuthButton"
@@ -77,8 +77,6 @@ function LoginForm() {
   if (forgotMode) {
     return (
       <AuthCard
-        icon={<Sparkles size={32} color="white" />}
-        title="GlowSuite CRM"
         subtitle="Tu negocio, organizado."
         caption="Para vendedoras independientes"
       >
@@ -132,8 +130,6 @@ function LoginForm() {
 
   return (
     <AuthCard
-      icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite CRM"
       subtitle="Tu negocio, organizado."
       caption="Para vendedoras independientes"
     >
