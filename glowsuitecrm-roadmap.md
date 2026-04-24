@@ -1,6 +1,6 @@
 # GlowSuite — Roadmap de Producto
 
-**Última actualización:** 2026-04-24 (blog SEO con 4 artículos + JSON-LD FAQPage en /ayuda)
+**Última actualización:** 2026-04-24 (canónicas estandarizadas a https://www.glowsuitecrm.com — blog, blog/[slug], terminos, sitemap)
 **Fase actual:** Piloto activo — plan Free disponible al público, Basic/Pro pendientes de precio
 
 ---
@@ -160,6 +160,8 @@ Metadata estructurada, robots.txt, sitemap.xml, JSON-LD y patrón server wrapper
 **Rutas bloqueadas:** `/dashboard`, `/clients`, `/sales`, `/followups`, `/metrics`, `/profile`, `/admin`, `/operador`, `/auth/`
 
 **Validación en producción (2026-04-22):** title, description, keywords, canonical, robots, googlebot, OG completo, Twitter card, JSON-LD, robots.txt y sitemap.xml — todos confirmados. Sin hreflang (sitio monolingüe, no crítico).
+
+**Fix canónicas (2026-04-24):** Google Search Console detectó inconsistencia — algunas páginas declaraban canónicas sin www (`https://glowsuitecrm.com/...`). Corregido en `app/blog/page.tsx`, `app/blog/[slug]/page.tsx` (canonical + OG url + JSON-LD author/publisher), `app/terminos/page.tsx` y `app/sitemap.ts`. URL canónica estándar: `https://www.glowsuitecrm.com`.
 
 ---
 

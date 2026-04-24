@@ -59,6 +59,8 @@ Las páginas con `"use client"` no pueden exportar `metadata` de Next.js. El pat
 
 **JSON-LD por tipo:** landing → `SoftwareApplication`, artículos → `Article`, ayuda → `FAQPage`.
 
+**URL canónica base:** siempre `https://www.glowsuitecrm.com` (con www). Todos los `alternates.canonical`, `openGraph.url`, JSON-LD `url` y la constante `base` en `sitemap.ts` deben usar la versión con www. Google Search Console detectó inconsistencias (sin www) — corregido 2026-04-24.
+
 **Guías de longitud para metadata:**
 - `title`: máximo ~55 caracteres (Google trunca a ~60). Ejemplo actual landing: *"GlowSuite CRM — CRM para consultoras de belleza en RD"* (53 chars)
 - `description`: 150–160 caracteres. Ejemplo actual landing: *"Organiza tus clientes, ventas y seguimientos con el sistema 2+2+2. Para consultoras de Mary Kay, Yanbal, Avon y venta directa en RD. Empieza gratis hoy."* (153 chars)
