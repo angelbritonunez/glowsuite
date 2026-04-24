@@ -410,4 +410,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-24 (blog SEO — `app/blog/` agregado con `generateStaticParams`; `@tailwindcss/typography` como devDependency; directorio actualizado). Previous update: 2026-04-22 (SEO refactor). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-04-24 (canonical URLs estandarizadas a `https://www.glowsuitecrm.com` — corregido en `blog/page.tsx`, `blog/[slug]/page.tsx`, `terminos/page.tsx` y `sitemap.ts`). Previous update: 2026-04-24 (blog SEO — `app/blog/` agregado con `generateStaticParams`). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
