@@ -65,6 +65,16 @@ export default async function BlogPostPage({ params }: Props) {
       />
 
       <main className="min-h-screen bg-white">
+        {/* Nav */}
+        <nav className="border-b border-gray-100 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <a href="/">
+              <img src="/logos/glowsuite-crm-horizontal.svg" alt="GlowSuite CRM" height={36} style={{ height: 36, width: "auto" }} />
+            </a>
+            <Link href="/blog" className="text-sm text-gray-500 hover:text-[#E75480] transition-colors">← Blog</Link>
+          </div>
+        </nav>
+
         {/* Breadcrumb */}
         <div className="border-b border-gray-100 px-4 py-3">
           <div className="max-w-2xl mx-auto text-sm text-gray-400">

@@ -69,8 +69,6 @@ export default function RegisterPage() {
 
   return (
     <AuthCard
-      icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite CRM"
       subtitle="Empieza a crecer hoy."
       caption="Crea tu cuenta gratis"
     >

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 56" fill="none" width="290" height="56">
+  
+  <rect width="56" height="56" rx="14" fill="white" fill-opacity="0.15"></rect>
+  <rect width="56" height="56" rx="14" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.5"></rect>
+  <path d="M28 11 L30.6 23.1 L42 26 L30.6 28.9 L28 40 L25.4 28.9 L14 26 L25.4 23.1 Z" fill="white"></path>
+  <circle cx="39" cy="15.5" r="2.8" fill="white" opacity="0.65"></circle>
+  <circle cx="15.5" cy="39.5" r="2.1" fill="white" opacity="0.4"></circle>
+  
+  <text x="72" y="38" font-family="&#39;DM Sans&#39;, system-ui, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6" fill="white">GlowSuite</text>
+  <text x="73" y="54" font-family="&#39;DM Sans&#39;, system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="2.5" fill="white" opacity="0.6">CRM</text>
+</svg>

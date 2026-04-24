@@ -155,6 +155,16 @@ export default function AyudaPage() {
       />
 
       <main className="min-h-screen bg-white">
+        {/* Nav */}
+        <nav className="border-b border-gray-100 px-4 py-3">
+          <div className="max-w-3xl mx-auto flex items-center justify-between">
+            <a href="/">
+              <img src="/logos/glowsuite-crm-horizontal.svg" alt="GlowSuite CRM" height={36} style={{ height: 36, width: "auto" }} />
+            </a>
+            <a href="/" className="text-sm text-gray-500 hover:text-[#E75480] transition-colors">← Inicio</a>
+          </div>
+        </nav>
+
         {/* Header */}
         <section className="bg-gradient-to-br from-pink-50 to-white border-b border-pink-100 py-16 px-4">
           <div className="max-w-3xl mx-auto text-center">

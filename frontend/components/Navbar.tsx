@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Lock, Menu, Sparkles, X } from "lucide-react"
+import { Lock, Menu, X } from "lucide-react"
 import UserMenu from "@/components/UserMenu"
 import { homeFor } from "@/lib/auth-config"
 import { usePlan } from "@/hooks/usePlan"
@@ -74,13 +74,13 @@ export default function Navbar({ role = "consultora" }: { role?: Role }) {
       <div className="h-14 flex items-center px-4 md:px-6 justify-between">
 
         {/* Izquierda: Brand */}
-        <Link href={homeFor(role)} className="flex items-center gap-2.5 no-underline">
-          <div className="bg-[#E75480] rounded-xl w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <Sparkles size={16} stroke="white" strokeWidth={2} />
-          </div>
-          <span className="font-semibold text-gray-900 text-base tracking-tight">
-            GlowSuite CRM
-          </span>
+        <Link href={homeFor(role)} className="flex items-center no-underline">
+          <img
+            src="/logos/glowsuite-crm-horizontal.svg"
+            alt="GlowSuite CRM"
+            height={36}
+            style={{ height: 36, width: "auto" }}
+          />
         </Link>
 
         {/* Centro: Links (desktop) */}

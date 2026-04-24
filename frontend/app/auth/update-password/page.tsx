@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { Lock, Eye, EyeOff, Sparkles, CheckCircle } from "lucide-react"
+import { Lock, Eye, EyeOff, CheckCircle } from "lucide-react"
 import AuthCard from "@/components/ui/AuthCard"
 import AuthInput from "@/components/ui/AuthInput"
 import AuthButton from "@/components/ui/AuthButton"
@@ -56,8 +56,6 @@ export default function UpdatePasswordPage() {
 
   return (
     <AuthCard
-      icon={<Sparkles size={32} color="white" />}
-      title="GlowSuite CRM"
       subtitle="Tu negocio, organizado."
       caption="Para vendedoras independientes"
     >

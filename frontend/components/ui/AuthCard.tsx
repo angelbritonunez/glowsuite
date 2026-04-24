@@ -1,23 +1,28 @@
 import { ReactNode } from "react"
 
 interface AuthCardProps {
-  icon: ReactNode
-  title: string
   subtitle: string
   caption: string
   children: ReactNode
+  // legacy — ignored, kept for backward compat during transition
+  icon?: ReactNode
+  title?: string
 }
 
-export default function AuthCard({ icon, title, subtitle, caption, children }: AuthCardProps) {
+export default function AuthCard({ subtitle, caption, children }: AuthCardProps) {
   return (
     <div className="min-h-screen flex">
       {/* Left column — hidden on mobile */}
       <div
-        className="hidden md:flex flex-col items-center justify-center gap-4 text-white px-10"
+        className="hidden md:flex flex-col items-center justify-center gap-6 text-white px-10"
         style={{ width: "38%", backgroundColor: "#E75480" }}
       >
-        <div>{icon}</div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <img
+          src="/logos/glowsuite-crm-horizontal-white.svg"
+          alt="GlowSuite CRM"
+          height={52}
+          style={{ height: 52, width: "auto" }}
+        />
         <p className="text-lg font-medium opacity-90">{subtitle}</p>
         <p className="text-sm opacity-70">{caption}</p>
       </div>
