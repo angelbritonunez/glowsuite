@@ -1,8 +1,10 @@
 "use client"
 
-import { Check } from "lucide-react"
+import { Check, Clock } from "lucide-react"
 import { usePlan } from "@/hooks/usePlan"
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
+import { useFeatureFlags } from "@/hooks/useFeatureFlags"
+import { FLAG_KEYS } from "@/lib/feature-flag-keys"
 import type { SubscriptionPlan } from "@/types"
 
 interface PlanDef {
@@ -76,6 +78,13 @@ function getPriceId(plan: PlanDef): string | undefined {
 export default function PlanesClient() {
   const { plan: currentPlan, loading } = usePlan()
   const { openCheckout } = usePaddleCheckout()
+  const { isEnabled, loading: flagsLoading } = useFeatureFlags()
+
+  function isPlanAvailable(planId: SubscriptionPlan): boolean {
+    if (planId === "basic") return isEnabled(FLAG_KEYS.PLAN_BASIC)
+    if (planId === "pro") return isEnabled(FLAG_KEYS.PLAN_PRO)
+    return true
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -90,10 +99,11 @@ export default function PlanesClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {PLANS.map((p) => {
-          const isCurrent  = currentPlan === p.id
-          const priceId    = getPriceId(p)
-          const isPopular  = p.popular
-          const canUpgrade = !isCurrent && p.id !== "free"
+          const isCurrent    = currentPlan === p.id
+          const priceId      = getPriceId(p)
+          const isPopular    = p.popular
+          const canUpgrade   = !isCurrent && p.id !== "free"
+          const planEnabled  = isPlanAvailable(p.id as SubscriptionPlan)
 
           return (
             <div
@@ -143,6 +153,16 @@ export default function PlanesClient() {
                       className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
                     >
                       {isCurrent ? "Plan actual" : "Gratis siempre"}
+                    </button>
+                  ) : flagsLoading ? (
+                    <div className="w-full rounded-xl py-2.5 bg-gray-100 animate-pulse h-10" />
+                  ) : !planEnabled ? (
+                    <button
+                      disabled
+                      className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Clock size={14} />
+                      Próximamente
                     </button>
                   ) : (
                     <button

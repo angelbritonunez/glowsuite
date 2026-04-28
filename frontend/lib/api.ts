@@ -223,3 +223,21 @@ export const getProducts = async () => {
   if (!res.ok) throw new Error("Error obteniendo productos")
   return res.json()
 }
+
+// FEATURE FLAGS
+export const getFeatureFlagsDetail = async (): Promise<Array<{ key: string; enabled: boolean; updated_at: string; description: string }>> => {
+  const res = await fetch(`${API_URL}/feature-flags/detail`, {
+    headers: await getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error("Error obteniendo feature flags")
+  return res.json()
+}
+
+export const patchFeatureFlag = async (key: string, enabled: boolean): Promise<void> => {
+  const res = await fetch(`${API_URL}/feature-flags/${key}`, {
+    method: "PATCH",
+    headers: await getAuthHeaders(true),
+    body: JSON.stringify({ enabled }),
+  })
+  if (!res.ok) throw new Error("Error actualizando feature flag")
+}
