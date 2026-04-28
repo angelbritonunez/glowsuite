@@ -132,6 +132,7 @@ app.add_middleware(
 | DELETE | `/admin/users/{user_id}` | Delete user (admin) |
 | POST | `/admin/users/{user_id}/reset-password` | Trigger password reset (admin) |
 | GET | `/admin/dashboard` | Admin dashboard stats |
+| POST | `/paddle/webhook` | Paddle subscription lifecycle events (HMAC-verified) |
 
 ---
 
@@ -142,24 +143,35 @@ app.add_middleware(
 NEXT_PUBLIC_API_URL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
+NEXT_PUBLIC_PADDLE_PRICE_BASIC
+NEXT_PUBLIC_PADDLE_PRICE_PRO
 ```
 
 ### Backend (`backend/.env`)
 ```
 SUPABASE_URL
 SUPABASE_KEY
+PADDLE_WEBHOOK_SECRET
+PADDLE_PRICE_BASIC
+PADDLE_PRICE_PRO
 ```
 
 ### Code References
 - `process.env.NEXT_PUBLIC_API_URL` — `frontend/lib/api.ts`
 - `process.env.NEXT_PUBLIC_SUPABASE_URL` — `frontend/lib/supabase/client.ts`
 - `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY` — `frontend/lib/supabase/client.ts`
+- `process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` — `frontend/lib/paddle.ts`
+- `process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC/PRO` — `frontend/app/planes/PlanesClient.tsx`
 - `os.getenv("SUPABASE_URL")` — `backend/app/config.py`
 - `os.getenv("SUPABASE_KEY")` — `backend/app/config.py`
+- `os.getenv("PADDLE_WEBHOOK_SECRET")` — `backend/app/config.py`
+- `os.getenv("PADDLE_PRICE_BASIC/PRO")` — `backend/app/config.py`
 
-**Total external service dependencies:** 2
+**Total external service dependencies:** 3
 - Supabase — DB, Auth, Storage
 - Resend — SMTP transaccional (`noreply@glowsuitecrm.com`) configurado en Supabase PROD
+- Paddle — billing y checkout (sandbox en DEV, prod en PROD)
 
 ---
 
@@ -195,6 +207,7 @@ SUPABASE_KEY
     "lint": "eslint"
   },
   "dependencies": {
+    "@paddle/paddle-js": "^1.x",
     "@supabase/supabase-js": "^2.99.2",
     "lucide-react": "^0.577.0",
     "next": "16.1.7",
@@ -219,6 +232,7 @@ SUPABASE_KEY
 - `@vercel/*` — ❌ None
 - `@cloudflare/*` — ❌ None
 - `@aws-sdk/*` — ❌ None
+- `@paddle/paddle-js` — ✅ Added (Paddle.js SDK for checkout overlay)
 
 ### Backend Key Dependencies (`requirements.txt`)
 
@@ -257,6 +271,7 @@ glowsuite/
 │   │   │   ├── dashboard.py       (115 lines)
 │   │   │   ├── followups.py       (100 lines)
 │   │   │   ├── metrics.py         (298 lines)
+│   │   │   ├── paddle_webhook.py  (92 lines)
 │   │   │   ├── products.py        (10 lines)
 │   │   │   └── sales.py           (292 lines)
 │   │   ├── services/
@@ -308,6 +323,9 @@ glowsuite/
     │   ├── operador/users/
     │   │   ├── page.tsx           (server wrapper — noindex metadata)
     │   │   └── OperadorUsersClient.tsx
+    │   ├── planes/
+    │   │   ├── page.tsx           (server wrapper — noindex metadata)
+    │   │   └── PlanesClient.tsx   (pricing cards + Paddle checkout)
     │   ├── privacidad/
     │   ├── profile/
     │   │   ├── page.tsx           (server wrapper — noindex metadata)
@@ -332,11 +350,14 @@ glowsuite/
     │       └── AuthInput.tsx
     ├── hooks/
     │   ├── useAuth.ts
+    │   ├── usePaddle.ts           (Paddle.js instance)
+    │   ├── usePaddleCheckout.ts   (openCheckout helper)
     │   └── usePlan.ts
     ├── lib/
     │   ├── api.ts
     │   ├── auth-config.ts         (PUBLIC_ROUTES definition)
     │   ├── auth.ts
+    │   ├── paddle.ts              (Paddle.js init — sandbox/prod)
     │   ├── supabase.js
     │   └── supabase/
     ├── public/
@@ -421,4 +442,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-28 (directorio: /register/pendiente). Previous update: 2026-04-25 (landing tweaks). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-04-28 (Paddle billing: /planes, /paddle/webhook, env vars, deps). Previous update: 2026-04-28 (/register/pendiente). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*

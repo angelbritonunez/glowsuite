@@ -92,6 +92,7 @@ Modular FastAPI app. `main.py` (47 lines) registers routers only. Routes have **
 | `routers/products.py` | GET `/products` |
 | `routers/auth.py` | GET `/auth/me` |
 | `routers/admin.py` | GET/POST/PATCH/DELETE `/admin/users`, GET `/admin/dashboard`, POST `/admin/users/{id}/reset-password` |
+| `routers/paddle_webhook.py` | POST `/paddle/webhook` |
 
 `backend/app/db.py` — Supabase client using service key (bypasses RLS)
 `backend/app/config.py` — loads `SUPABASE_URL`, `SUPABASE_KEY`, `ALLOWED_ORIGIN`
@@ -118,13 +119,16 @@ Three tiers: `free` | `basic` | `pro`. Stored in `profiles.subscription_plan`.
 
 - **Hook:** `hooks/usePlan.ts` — exposes `{ plan, loading, can(requiredPlan) }`. Read plan from Supabase directly (no backend call).
 - **Guard pattern:** `if (!planLoading && !can("basic")) return <UpgradeBanner requiredPlan="basic" />`
-- **UpgradeBanner** (`components/UpgradeBanner.tsx`) — calls `usePlan()` internally; shows current plan + required plan. No props needed beyond `requiredPlan`.
-- **Plan visibility standard:** the consultora must always know her current plan. Two mandatory touchpoints:
-  1. `UpgradeBanner` — "Estás en el plan **X**. Esta función está disponible a partir del plan **Y**."
+- **UpgradeBanner** (`components/UpgradeBanner.tsx`) — Basic: Lock icon + botón "Ver planes" → `router.push('/planes')`. Pro: Clock icon + "Próximamente". No props beyond `requiredPlan`.
+- **Plan visibility standard:** the consultora must always know her current plan. Three mandatory touchpoints:
+  1. `UpgradeBanner` — bloquea la feature e invita a hacer upgrade.
   2. Profile header (`/profile`) — badge de plan junto al badge de rol (solo visible para consultoras).
+  3. Sección "Mi suscripción" en `/profile` — plan actual + precio + botón "Ver planes y hacer upgrade" (oculto si ya es Pro).
 - **Plan colors:** Free → gray, Basic → blue, Pro → pink (`#E75480`)
 - **Feature matrix:** Free = clientes/ventas/seguimientos básicos; Basic adds crédito, ganancias, workspace; Pro adds métricas avanzadas, WhatsApp, link registro, agenda.
-- **Assignment:** manual por operador/admin desde `/operador/users` — sin pasarela de pago por ahora.
+- **`/planes`** — página de pricing (server wrapper + `PlanesClient.tsx`). 3 cards responsivas, botones llaman a `usePaddleCheckout()`. Basic tiene borde `#E75480` y badge "Más popular". Ruta en `ALLOWED_ROUTES` de consultora (autenticada, noindex).
+- **Paddle billing:** `hooks/usePaddleCheckout.ts` abre el checkout overlay. `lib/paddle.ts` inicializa Paddle.js sandbox/prod. Backend recibe eventos via `POST /paddle/webhook` (HMAC-SHA256, header `paddle-signature`).
+- **Assignment:** auto vía Paddle checkout en `/planes` **o** manual por admin/operador desde `/operador/users`.
 
 ### Auth Flow
 
@@ -193,6 +197,9 @@ Two Supabase projects — local always apunta a DEV, PROD solo vive en los hosti
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_SUPABASE_URL=https://bawkkmcoqctbjxaqqgcx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite-dev>
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=<sandbox client token>
+NEXT_PUBLIC_PADDLE_PRICE_BASIC=<sandbox price ID Basic>
+NEXT_PUBLIC_PADDLE_PRICE_PRO=<sandbox price ID Pro>
 ```
 
 **Backend DEV** (`backend/.env`):
@@ -200,6 +207,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite-dev>
 SUPABASE_URL=https://bawkkmcoqctbjxaqqgcx.supabase.co
 SUPABASE_KEY=<service_role key de glowsuite-dev>
 ALLOWED_ORIGIN=http://localhost:3000
+PADDLE_WEBHOOK_SECRET=<sandbox webhook secret>
+PADDLE_PRICE_BASIC=<sandbox price ID Basic>
+PADDLE_PRICE_PRO=<sandbox price ID Pro>
 ```
 
 **Frontend PROD** (Vercel environment variables):
@@ -207,6 +217,9 @@ ALLOWED_ORIGIN=http://localhost:3000
 NEXT_PUBLIC_API_URL=<URL del backend en Render>
 NEXT_PUBLIC_SUPABASE_URL=https://nmfszmssahhposvaodml.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite PROD>
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=<prod client token>
+NEXT_PUBLIC_PADDLE_PRICE_BASIC=<prod price ID Basic>
+NEXT_PUBLIC_PADDLE_PRICE_PRO=<prod price ID Pro>
 ```
 
 **Backend PROD** (Render environment variables):
@@ -214,6 +227,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite PROD>
 SUPABASE_URL=https://nmfszmssahhposvaodml.supabase.co
 SUPABASE_KEY=<service_role key de glowsuite PROD>
 ALLOWED_ORIGIN=https://glowsuitecrm.com
+PADDLE_WEBHOOK_SECRET=<prod webhook secret — sin espacios ni saltos de línea>
+PADDLE_PRICE_BASIC=<prod price ID Basic>
+PADDLE_PRICE_PRO=<prod price ID Pro>
 ```
 
 ## Documentación del proyecto
