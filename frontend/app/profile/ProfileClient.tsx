@@ -347,6 +347,41 @@ function ProfileContent() {
       {/* ── Sections ── */}
       <div className="space-y-4 overflow-y-auto pb-2 md:max-h-[calc(100vh-14rem)]">
 
+        {/* ── Mi suscripción (consultoras only) ── */}
+        {role !== "admin" && role !== "operador" && (
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="border-b border-gray-50 px-5 py-4">
+              <span className="text-sm font-semibold text-gray-800">Mi suscripción</span>
+              <p className="text-xs text-gray-400 mt-0.5">Tu plan actual de GlowSuite CRM</p>
+            </div>
+            <div className="px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <span className={`rounded-full text-xs font-semibold px-2.5 py-1 ${
+                  plan === "pro"   ? "bg-[#FFF0F4] text-[#E75480]" :
+                  plan === "basic" ? "bg-blue-50 text-blue-600" :
+                                     "bg-gray-100 text-gray-500"
+                }`}>
+                  {plan === "pro" ? "Pro" : plan === "basic" ? "Basic" : "Free"}
+                </span>
+                <span className="text-sm text-gray-400">
+                  {plan === "pro" ? "$19/mes" : plan === "basic" ? "$9/mes" : "$0/mes"}
+                </span>
+              </div>
+              {plan === "pro" ? (
+                <span className="text-sm text-gray-400">Estás en el plan más completo 🎉</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => router.push("/planes")}
+                  className="shrink-0 bg-[#E75480] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[#d04070] transition"
+                >
+                  Ver planes y hacer upgrade
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Información personal ── */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="border-b border-gray-50 px-5 py-4">
