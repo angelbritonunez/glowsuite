@@ -172,7 +172,7 @@ El kit oficial vive en `frontend/public/logos/` (8 variantes SVG). Usar siempre 
 
 - **Dominio:** `glowsuitecrm.com` — comprado en Namecheap, apunta a Vercel (frontend)
 - **SMTP transaccional:** Resend — `noreply@glowsuitecrm.com`, configurado en Supabase PROD (Settings → Auth → SMTP). Host: `smtp.resend.com:465`, user: `resend`, password: API key de Resend
-- **Templates de email:** personalizados en Supabase PROD → Authentication → Email Templates (HTML en español con branding GlowSuite)
+- **Templates de email:** personalizados en Supabase PROD → Authentication → Email Templates (HTML en español con branding GlowSuite CRM)
 - **Email de contacto:** pendiente — reenvío desde `hola@glowsuitecrm.com` a Gmail (Namecheap Email Forwarding, aún no configurado)
 
 ## Environments

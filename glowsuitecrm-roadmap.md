@@ -1,4 +1,4 @@
-# GlowSuite — Roadmap de Producto
+# GlowSuite CRM — Roadmap de Producto
 
 **Última actualización:** 2026-04-28 (registro: campo Empresa, máscara teléfono, standby post-registro, auto-redirect confirmación, deuda F1)
 **Fase actual:** Piloto activo — plan Free disponible al público, Basic/Pro pendientes de precio
@@ -7,7 +7,7 @@
 
 ## Contexto del producto
 
-**GlowSuite** es un CRM para consultoras de belleza en la República Dominicana, construido específicamente para el flujo de trabajo de Mary Kay: registrar clientes, registrar ventas, hacer seguimiento post-venta (ciclo 2-2-2) y cobrar. El producto corre en `glowsuitecrm.com`.
+**GlowSuite CRM** es un CRM para consultoras de belleza en la República Dominicana, construido específicamente para el flujo de trabajo de Mary Kay: registrar clientes, registrar ventas, hacer seguimiento post-venta (ciclo 2-2-2) y cobrar. El producto corre en `glowsuitecrm.com`.
 
 **Equipo fundador:**
 | Nombre | Rol |
@@ -231,7 +231,7 @@ Flujo completo de auth sin invite: registro público → standby de confirmació
 ---
 
 ### SMTP Branded — Resend ✅
-Emails de auth salen desde `noreply@glowsuitecrm.com` con nombre de remitente "GlowSuite".
+Emails de auth salen desde `noreply@glowsuitecrm.com` con nombre de remitente "GlowSuite CRM".
 
 **Configuración en Supabase PROD:** `smtp.resend.com:465`, user: `resend`, password: API key de Resend
 **Dominio:** verificado en Namecheap con registros TXT + MX → Resend
