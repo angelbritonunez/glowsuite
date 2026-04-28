@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from app.db import supabase
 from app.config import ALLOWED_ORIGIN, SUPABASE_URL
 
-from app.routers import clients, products, sales, followups, metrics, dashboard, admin, auth
+from app.routers import clients, products, sales, followups, metrics, dashboard, admin, auth, paddle_webhook
 
 app = FastAPI()
 
@@ -97,6 +97,7 @@ app.include_router(metrics.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
+app.include_router(paddle_webhook.router)
 
 
 @app.get("/")
