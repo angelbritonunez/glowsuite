@@ -3,8 +3,7 @@ import hmac
 import json
 import logging
 
-from fastapi import APIRouter, Request, Response, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Request, Response
 from app.config import PADDLE_WEBHOOK_SECRET, PADDLE_PRICE_BASIC, PADDLE_PRICE_PRO
 from app.db import supabase
 
@@ -90,17 +89,3 @@ async def paddle_webhook(request: Request):
         logger.info("paddle_webhook: unhandled event %s", event_type)
 
     return Response(status_code=200)
-
-
-# TODO: remove before production
-class _TestActivateBody(BaseModel):
-    user_id: str
-    plan: str
-
-
-@router.post("/paddle/test-activate")
-async def paddle_test_activate(body: _TestActivateBody):
-    if body.plan not in ("basic", "pro"):
-        raise HTTPException(status_code=400, detail="plan must be 'basic' or 'pro'")
-    supabase.table("profiles").update({"subscription_plan": body.plan}).eq("id", body.user_id).execute()
-    return {"ok": True, "user_id": body.user_id, "plan": body.plan}
