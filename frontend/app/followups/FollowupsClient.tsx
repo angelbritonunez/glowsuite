@@ -56,7 +56,7 @@ function FollowupsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { can } = usePlan()
-  const initialTab = searchParams.get("tab") === "cobros" && can("basic") ? "cobros" : "seguimientos"
+  const initialTab = searchParams.get("tab") === "cobros" ? "cobros" : "seguimientos"
 
   const [tab, setTab]             = useState<"seguimientos" | "cobros">(initialTab)
   const [filter, setFilter]       = useState<"overdue" | "today" | "upcoming" | "all">("all")
@@ -209,34 +209,27 @@ function FollowupsContent() {
         </button>
 
         {/* Tab: Cobros pendientes */}
-        {can("basic") ? (
-          <button
-            onClick={() => setTab("cobros")}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              tab === "cobros" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              Cobros pendientes
-              {receivables.length > 0 && (
-                <span className="bg-orange-400 text-white text-xs font-semibold rounded-full px-2 py-0.5 leading-none">
-                  {receivables.length}
-                </span>
-              )}
-            </span>
-          </button>
-        ) : (
-          <button
-            disabled
-            className="px-5 py-2 rounded-lg text-sm font-medium text-gray-400 cursor-not-allowed flex items-center gap-2"
-          >
+        <button
+          onClick={() => setTab("cobros")}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+            tab === "cobros" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <span className="flex items-center gap-2">
             Cobros pendientes
-            <span className="flex items-center gap-0.5 text-[10px] font-semibold bg-gray-200 text-gray-400 rounded-full px-1.5 py-0.5 leading-none">
-              <Lock size={8} strokeWidth={2.5} />
-              Basic
-            </span>
-          </button>
-        )}
+            {can("basic") && receivables.length > 0 && (
+              <span className="bg-orange-400 text-white text-xs font-semibold rounded-full px-2 py-0.5 leading-none">
+                {receivables.length}
+              </span>
+            )}
+            {!can("basic") && (
+              <span className="flex items-center gap-0.5 text-[10px] font-semibold bg-gray-200 text-gray-400 rounded-full px-1.5 py-0.5 leading-none">
+                <Lock size={8} strokeWidth={2.5} />
+                Basic
+              </span>
+            )}
+          </span>
+        </button>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
