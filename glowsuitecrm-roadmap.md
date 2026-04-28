@@ -1,6 +1,6 @@
 # GlowSuite — Roadmap de Producto
 
-**Última actualización:** 2026-04-25 (landing tweaks: redes sociales, copy, UI)
+**Última actualización:** 2026-04-28 (registro: campo Empresa, máscara teléfono, standby post-registro, auto-redirect confirmación, deuda F1)
 **Fase actual:** Piloto activo — plan Free disponible al público, Basic/Pro pendientes de precio
 
 ---
@@ -215,15 +215,18 @@ Disclaimer de software independiente en todos los puntos de contacto legales y U
 ---
 
 ### Autenticación — Registro y recuperación de contraseña ✅
-Flujo completo de auth sin invite: registro público → email de confirmación → login manual. Recuperación de contraseña por email.
+Flujo completo de auth sin invite: registro público → standby de confirmación → email → `/auth/confirmed` → auto-redirect a `/login`. Recuperación de contraseña por email.
 
 **Páginas:**
-- `/register` — registro público de consultoras
-- `/auth/confirmed` — post-confirmación; hace `signOut()` para evitar auto-login
+- `/register` — campos: nombre, apellido, email, teléfono (máscara `(XXX) XXX-XXXX`), empresa (select: Mary Kay / Avon / Amway / Yanbal), contraseña
+- `/register/pendiente` — página estática post-registro; indica que se envió correo de confirmación
+- `/auth/confirmed` — hace `signOut()` y redirige automáticamente a `/login`. Requiere que `https://glowsuitecrm.com/auth/confirmed` esté en Redirect URLs de Supabase PROD (Auth → URL Configuration)
 - `/login` — incluye flujo inline de "olvidé mi contraseña"
 - `/auth/update-password` — establece nueva contraseña desde token del email
 
-**DB trigger:** `on_auth_user_created` → auto-crea fila en `profiles` con `role='consultora'`, `is_active=true`, `plan='free'`
+**DB trigger:** `on_auth_user_created` → auto-crea fila en `profiles` con `role='consultora'`, `is_active=true`, `plan='free'`, `first_name`, `last_name`, `phone` (normalizado), `company`.
+**`profiles.company`:** columna `text` nullable — migración `add_company_to_profiles_update_trigger` aplicada en DEV y PROD (2026-04-28).
+**`auth.users`:** `full_name` enviado en `options.data` del `signUp` para display name en dashboard de Supabase.
 
 ---
 

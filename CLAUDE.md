@@ -72,6 +72,12 @@ GlowSuite CRM es un **software independiente** sin afiliación con ninguna empre
 - Disclaimer de no afiliación obligatorio en: footer landing, footer layout autenticado, Términos Art. 00, Política de Privacidad sección "Datos y terceros", Ayuda FAQ
 - Keywords SEO con nombres de marcas en `metadata.keywords` (no visibles en UI) **y** en `metadata.description` de la landing (nominative fair use)
 
+### Redes sociales
+
+- **Instagram:** `https://www.instagram.com/glowsuitecrm` (@glowsuitecrm)
+- **TikTok:** `https://www.tiktok.com/@glowsuitecrm` (@glowsuitecrm)
+- Iconos en el footer de la landing (`app/page.tsx`) — SVG inline, hover `#E75480`, Server Component safe (sin event handlers).
+
 ### Backend Structure
 
 Modular FastAPI app. `main.py` (47 lines) registers routers only. Routes have **no `/api/` prefix**:
@@ -122,11 +128,17 @@ Three tiers: `free` | `basic` | `pro`. Stored in `profiles.subscription_plan`.
 
 ### Auth Flow
 
+- **Registro:** `app/register/RegisterClient.tsx` — campos: nombre, apellido, email, teléfono (máscara `(XXX) XXX-XXXX`), empresa (select: Mary Kay / Avon / Amway / Yanbal), contraseña. Tras `signUp` exitoso redirige a `/register/pendiente`.
+- **`profiles.company`:** columna `text` nullable — empresa seleccionada al registrarse. El trigger `handle_new_user` la lee de `raw_user_meta_data->>'company'`. Migración `add_company_to_profiles_update_trigger` aplicada en DEV y PROD.
+- **`auth.users` display name:** `signUp` envía `full_name` en `options.data` para que Supabase Auth muestre el nombre en su dashboard.
+- **Teléfono:** la máscara `(XXX) XXX-XXXX` es solo UI; `normalize_phone()` en DB extrae los 10 dígitos y los guarda planos en `profiles.phone`.
+- **Standby post-registro:** `app/register/pendiente/page.tsx` — página estática; indica que se envió correo de confirmación. Está en `PUBLIC_ROUTES`.
+- **Confirmación de cuenta:** `app/auth/confirmed/page.tsx` — hace `signOut()` y redirige automáticamente a `/login`. Supabase debe tener `https://glowsuitecrm.com/auth/confirmed` en la lista de Redirect URLs permitidas (Auth → URL Configuration en PROD).
 - **Login:** `app/login/page.tsx` — incluye flujo inline de recuperación de contraseña
 - **Recuperación de contraseña:** llama `supabase.auth.resetPasswordForEmail()` con `redirectTo: https://glowsuitecrm.com/auth/update-password`
 - **Nueva contraseña:** `app/auth/update-password/page.tsx` — Supabase crea sesión automáticamente desde el token del email; la ruta está en `PUBLIC_ROUTES` para evitar redirect al dashboard
-- **Confirmación de cuenta:** `app/auth/confirmed/page.tsx` — hace `signOut()` para evitar auto-login
 - **Rutas públicas:** definidas en `lib/auth-config.ts` → `PUBLIC_ROUTES`. Cualquier ruta pública nueva debe agregarse ahí o `useAuth` redirige al dashboard. El check usa `startsWith`, por lo que agregar `/blog` cubre también `/blog/[slug]`
+- **`ClientLayout.tsx`:** usa `authPrefixes` con `startsWith` para ocultar el nav en `/login`, `/register/*` y `/auth/*`. Si se agrega una sub-ruta pública nueva dentro de esos prefijos no requiere cambio aquí, pero si es fuera de ellos sí hay que agregarlo. **Deuda F1:** `ClientLayout` debería derivar su lógica de `PUBLIC_ROUTES` (ver roadmap).
 - **Roles:** `consultora` | `admin` | `operador`. Definidos en `lib/auth-config.ts` → `ALLOWED_ROUTES` y `DEFAULT_REDIRECT`. Guardados en `profiles.role`
   - `consultora` → redirige a `/dashboard`
   - `admin` → redirige a `/admin/dashboard`

@@ -314,7 +314,9 @@ glowsuite/
     │   │   └── ProfileClient.tsx
     │   ├── register/
     │   │   ├── page.tsx           (server wrapper)
-    │   │   └── RegisterClient.tsx
+    │   │   ├── RegisterClient.tsx
+    │   │   └── pendiente/
+    │   │       └── page.tsx       (standby post-registro — Server Component, noindex)
     │   ├── sales/new/
     │   ├── terminos/
     │   ├── layout.tsx             (global metadata — title template, OG, Twitter card)
@@ -419,4 +421,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-24 (logo kit oficial integrado — `public/logos/` con 8 variantes; `Navbar.tsx`, `AuthCard.tsx`, blog, ayuda actualizados). Previous update: 2026-04-24 (canonical URLs estandarizadas a `https://www.glowsuitecrm.com`). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-04-28 (directorio: /register/pendiente). Previous update: 2026-04-25 (landing tweaks). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
