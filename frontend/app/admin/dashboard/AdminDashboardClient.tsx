@@ -1,18 +1,11 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { getAdminDashboard, getFeatureFlagsDetail, patchFeatureFlag } from "@/lib/api"
+import { getAdminDashboard } from "@/lib/api"
 import { Users, UserCheck, UserX, ShoppingBag, UserPlus, Bell } from "lucide-react"
 import type { AdminDashboardData, AdminDashboardConsultora, SubscriptionPlan } from "@/types"
-
-interface FeatureFlag {
-  key: string
-  enabled: boolean
-  updated_at: string
-  description: string
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -170,13 +163,6 @@ export default function AdminDashboardPage() {
   const router = useRouter()
   const [data, setData] = useState<AdminDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
-  const [toast, setToast] = useState<string | null>(null)
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }, [])
 
   useEffect(() => {
     const init = async () => {
@@ -193,12 +179,8 @@ export default function AdminDashboardPage() {
       if (profile?.role !== "admin") { router.push("/dashboard"); return }
 
       try {
-        const [dashRes, flagsRes] = await Promise.all([
-          getAdminDashboard(),
-          getFeatureFlagsDetail(),
-        ])
-        setData(dashRes)
-        setFeatureFlags(flagsRes)
+        const res = await getAdminDashboard()
+        setData(res)
       } catch {
         // keep loading=false, show empty state
       } finally {
@@ -207,23 +189,6 @@ export default function AdminDashboardPage() {
     }
     init()
   }, [router])
-
-  const handleFlagToggle = async (key: string, currentEnabled: boolean) => {
-    const newEnabled = !currentEnabled
-    setFeatureFlags((prev) =>
-      prev.map((f) => f.key === key ? { ...f, enabled: newEnabled, updated_at: new Date().toISOString() } : f)
-    )
-    try {
-      await patchFeatureFlag(key, newEnabled)
-      const label = featureFlags.find((f) => f.key === key)?.description ?? key
-      showToast(`${label}: ${newEnabled ? "activado" : "desactivado"}`)
-    } catch {
-      setFeatureFlags((prev) =>
-        prev.map((f) => f.key === key ? { ...f, enabled: currentEnabled } : f)
-      )
-      showToast("Error al actualizar el flag")
-    }
-  }
 
   if (loading) {
     return (
@@ -354,53 +319,6 @@ export default function AdminDashboardPage() {
 
       {/* ── Bloque 3: Performance por consultora ── */}
       <ConsultorasTable consultoras={consultoras} />
-
-      {/* ── Bloque 4: Feature Flags ── */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="border-b border-gray-50 px-5 py-4">
-          <span className="text-sm font-semibold text-gray-800">Feature Flags</span>
-          <p className="text-xs text-gray-400 mt-0.5">Activa o desactiva funciones sin necesidad de un deploy</p>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {featureFlags.length === 0 ? (
-            <p className="text-center py-8 text-sm text-gray-400">No hay flags configurados.</p>
-          ) : (
-            featureFlags.map((flag) => (
-              <div key={flag.key} className="flex items-center justify-between px-5 py-3.5 gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{flag.description}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 font-mono">{flag.key}</p>
-                </div>
-                <div className="text-xs text-gray-400 whitespace-nowrap hidden sm:block">
-                  {fmtDate(flag.updated_at)}
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={flag.enabled}
-                  onClick={() => handleFlagToggle(flag.key, flag.enabled)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                    flag.enabled ? "bg-[#E75480]" : "bg-gray-200"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
-                      flag.enabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ── Toast ── */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-5 py-2.5 rounded-xl shadow-lg z-50 animate-fade-in">
-          {toast}
-        </div>
-      )}
 
     </div>
   )

@@ -19,8 +19,9 @@ const consultorItems = [
 ] as const
 
 const adminItems = [
-  { label: "Dashboard", href: "/admin/dashboard" },
-  { label: "Usuarios",  href: "/operador/users"  },
+  { label: "Dashboard",     href: "/admin/dashboard" },
+  { label: "Usuarios",      href: "/operador/users"  },
+  { label: "Configuración", href: "/admin/config"    },
 ]
 
 const operadorItems = [

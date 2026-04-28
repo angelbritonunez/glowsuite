@@ -4,7 +4,7 @@ export const PUBLIC_ROUTES = ["/", "/login", "/register", "/auth/confirmed", "/a
 
 export const ALLOWED_ROUTES: Record<Role, string[]> = {
   consultora: ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile", "/planes"],
-  admin:      ["/admin/dashboard", "/operador/users", "/profile"],
+  admin:      ["/admin/dashboard", "/admin/config", "/operador/users", "/profile"],
   operador:   ["/operador/users", "/profile"],
 }
 
