@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import logging
 
 from fastapi import APIRouter, Request, Response
@@ -40,13 +41,15 @@ def _resolve_plan(price_id: str) -> str | None:
 @router.post("/paddle/webhook")
 async def paddle_webhook(request: Request):
     raw_body = await request.body()
-    signature_header = request.headers.get("Paddle-Signature", "")
+    signature_header = request.headers.get("paddle-signature", "")
+    logger.info("Paddle webhook received. Signature header: %s", signature_header or "MISSING")
 
     if not _verify_signature(raw_body, signature_header):
+        logger.warning("Paddle webhook signature verification failed")
         return Response(status_code=401)
 
     try:
-        payload = await request.json()
+        payload = json.loads(raw_body)
     except Exception:
         return Response(status_code=200)
 
