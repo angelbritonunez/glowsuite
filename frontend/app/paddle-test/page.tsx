@@ -1,14 +1,10 @@
 'use client';
 import { usePaddle } from '@/hooks/usePaddle';
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout';
 
 export default function PaddleTestPage() {
   const paddle = usePaddle();
-
-  function openCheckout(priceId: string) {
-    paddle?.Checkout.open({
-      items: [{ priceId, quantity: 1 }],
-    });
-  }
+  const { openCheckout } = usePaddleCheckout();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
