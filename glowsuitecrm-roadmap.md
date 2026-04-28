@@ -1,7 +1,7 @@
 # GlowSuite CRM — Roadmap de Producto
 
-**Última actualización:** 2026-04-28 (registro: campo Empresa, máscara teléfono, standby post-registro, auto-redirect confirmación, deuda F1)
-**Fase actual:** Piloto activo — plan Free disponible al público, Basic/Pro pendientes de precio
+**Última actualización:** 2026-04-28 (Paddle billing: webhook, /planes, profile Mi suscripción, UpgradeBanner CTA)
+**Fase actual:** Piloto activo — Free disponible al público, Basic/Pro disponibles vía Paddle checkout
 
 ---
 
@@ -40,11 +40,11 @@
 | Crédito y cobros | ✅ Activo |
 | Panel de administración | ✅ Activo |
 | Planes Free/Basic/Pro | ✅ Activo |
+| Billing / Paddle checkout | ✅ Activo |
 | SMTP branded (Resend) | ✅ Activo |
 | WhatsApp automático | ⏸ En pausa |
 | Agenda / reservas | 🔲 Pendiente |
 | Link de registro de clientes | 🔲 Pendiente |
-| Pasarela de pagos (Stripe) | 🔲 Pendiente |
 
 ---
 
@@ -61,9 +61,10 @@
 | Link de registro de clientes | ❌ | ❌ | ✅ (próximamente) |
 | Agenda / reservas | ❌ | ❌ | ✅ (próximamente) |
 
-**Precios (landing):** Free $0 / Basic $9 USD / Pro $19 USD
-**Asignación:** manual por admin/operador desde `/operador/users` — sin pasarela de pago por ahora.
-**Piloto:** Basic y Pro desactivados en la landing, solo Free disponible para registro público.
+**Precios:** Free $0 / Basic $9 USD / Pro $19 USD por mes
+**Checkout:** self-service vía Paddle en `/planes` (`usePaddleCheckout` → overlay). Webhook `POST /paddle/webhook` actualiza `profiles.subscription_plan` al recibir `subscription.activated` / `subscription.updated` / `subscription.canceled`.
+**Asignación manual:** admin/operador pueden cambiar el plan directamente desde `/operador/users` (override).
+**Piloto:** Basic y Pro disponibles vía Paddle checkout. Free siempre disponible.
 
 ---
 
@@ -122,13 +123,34 @@ Vista unificada en una sola pantalla: seguimientos pendientes (overdue / hoy / p
 
 ---
 
+### Feature 10 — Billing / Paddle checkout ✅
+
+Self-service de suscripción. Las consultoras pueden comprar Basic o Pro directamente desde `/planes` sin intervención del admin.
+
+**Frontend:**
+- `app/planes/` — server wrapper + `PlanesClient.tsx`. 3 cards responsivas (Free / Basic / Pro), Basic con borde `#E75480` y badge "Más popular".
+- `hooks/usePaddleCheckout.ts` — abre el checkout overlay con `priceId` y `customData.user_id`.
+- `hooks/usePaddle.ts` + `lib/paddle.ts` — inicialización de Paddle.js (sandbox/prod según `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`).
+- `components/UpgradeBanner.tsx` — CTA Basic ahora navega a `/planes` (antes era WhatsApp al admin).
+- `app/profile/ProfileClient.tsx` — sección "Mi suscripción" debajo del header: plan + precio + botón upgrade.
+
+**Backend:**
+- `routers/paddle_webhook.py` — `POST /paddle/webhook`. Verificación HMAC-SHA256 con header `paddle-signature` (formato `ts=...;h1=...`). Eventos manejados: `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.past_due`. Actualiza `profiles.subscription_plan`.
+- `config.py` — nuevas vars: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`.
+
+**Env vars nuevas:**
+- Frontend: `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_PADDLE_PRICE_BASIC`, `NEXT_PUBLIC_PADDLE_PRICE_PRO`
+- Backend: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`
+
+---
+
 ### Feature 9 — Planes Free / Basic / Pro ✅
 Sistema de membresía con tres tiers. Guards en frontend bloquean features según el plan de la consultora y muestran el `UpgradeBanner` correspondiente.
 
 **Implementación:**
 - `profiles.subscription_plan TEXT DEFAULT 'free'`
 - `hooks/usePlan.ts` → `{ plan, loading, can(requiredPlan) }`
-- `UpgradeBanner.tsx` — basic: lock + CTA WhatsApp; pro: "Próximamente" con Clock icon
+- `UpgradeBanner.tsx` — basic: Lock icon + "Ver planes" → `/planes`; pro: Clock icon + "Próximamente"
 - Badge de plan en `/profile` (solo consultoras)
 - Navbar filtra items según `minPlan`
 
@@ -347,17 +369,6 @@ CREATE TABLE registration_tokens (
 
 ---
 
-### Pasarela de pagos (Stripe) 🔲
-
-**Contexto:** hoy el admin asigna planes manualmente. Cuando salga el piloto, las consultoras deben poder suscribirse solas.
-**Decisiones pendientes:**
-- [ ] Precio mensual de Basic y Pro
-- [ ] ¿Precio anual con descuento?
-- [ ] ¿Qué pasa con las usuarias del piloto al terminar?
-- [ ] ¿Trial de 1 mes al registrarse?
-
----
-
 ## Deuda técnica — Seguridad
 
 Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack actual.
@@ -384,4 +395,4 @@ Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack 
 
 ---
 
-*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-28.*
+*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-28 (Paddle billing).*
