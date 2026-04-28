@@ -3,7 +3,7 @@ import type { Role } from "@/types"
 export const PUBLIC_ROUTES = ["/", "/login", "/register", "/auth/confirmed", "/auth/update-password", "/terminos", "/privacidad", "/ayuda", "/blog", "/register/pendiente"]
 
 export const ALLOWED_ROUTES: Record<Role, string[]> = {
-  consultora: ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile"],
+  consultora: ["/dashboard", "/clients", "/sales", "/metrics", "/followups", "/profile", "/planes"],
   admin:      ["/admin/dashboard", "/operador/users", "/profile"],
   operador:   ["/operador/users", "/profile"],
 }
