@@ -143,7 +143,7 @@ async def get_paddle_portal(request: Request):
         supabase.table("profiles")
         .select("paddle_customer_id, paddle_subscription_id")
         .eq("id", user_id)
-        .maybeSingle()
+        .maybe_single()
         .execute()
     )
     profile = result.data or {}
