@@ -156,6 +156,12 @@ async def get_paddle_portal(request: Request):
             status_code=404,
         )
 
+    if not subscription_id:
+        return JSONResponse(
+            {"detail": "No tenemos tu ID de suscripción registrado. Contacta a soporte."},
+            status_code=400,
+        )
+
     if not PADDLE_API_KEY:
         logger.error("paddle_portal: PADDLE_API_KEY no configurado")
         return JSONResponse({"detail": "Error de configuración del servidor"}, status_code=500)

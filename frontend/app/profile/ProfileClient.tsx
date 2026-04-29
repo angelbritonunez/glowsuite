@@ -79,6 +79,7 @@ function ProfileContent() {
 
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
   const [role, setRole] = useState<string>("consultora")
@@ -291,17 +292,18 @@ function ProfileContent() {
 
   const handleOpenPortal = async () => {
     setPortalLoading(true)
+    setPortalError(null)
     try {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        alert("Tu sesión ha expirado. Vuelve a iniciar sesión.")
+        setPortalError("Tu sesión ha expirado. Vuelve a iniciar sesión.")
         return
       }
       const url = await getPaddlePortalUrl(session.access_token, session.user.id)
       window.open(url, "_blank", "noopener,noreferrer")
     } catch (err) {
-      alert((err as Error).message || "No se pudo abrir el portal de suscripción.")
+      setPortalError((err as Error).message || "No se pudo abrir el portal de suscripción.")
     } finally {
       setPortalLoading(false)
     }
@@ -416,23 +418,28 @@ function ProfileContent() {
 
               {/* Portal / cancel row (Basic and Pro only) */}
               {(plan === "basic" || plan === "pro") && (
-                <div className="flex items-center justify-between gap-4 pt-1 border-t border-gray-50">
-                  <p className="text-xs text-gray-400">
-                    Cancela o gestiona tu suscripción desde el portal de Paddle. La cancelación aplica al final del período actual.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleOpenPortal}
-                    disabled={portalLoading}
-                    className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition disabled:opacity-50"
-                  >
-                    {portalLoading ? "Abriendo..." : (
-                      <>
-                        Cancelar suscripción
-                        <ExternalLink size={11} />
-                      </>
-                    )}
-                  </button>
+                <div className="pt-1 border-t border-gray-50 space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-xs text-gray-400">
+                      Cancela o gestiona tu suscripción desde el portal de Paddle. La cancelación aplica al final del período actual.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenPortal}
+                      disabled={portalLoading}
+                      className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition disabled:opacity-50"
+                    >
+                      {portalLoading ? "Abriendo..." : (
+                        <>
+                          Cancelar suscripción
+                          <ExternalLink size={11} />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {portalError && (
+                    <p className="text-xs text-red-500">{portalError}</p>
+                  )}
                 </div>
               )}
             </div>
