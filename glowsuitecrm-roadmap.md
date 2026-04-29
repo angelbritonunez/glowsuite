@@ -395,4 +395,32 @@ Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack 
 
 ---
 
-*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-28 (Paddle billing).*
+## Pendientes de go-live a producción (Paddle)
+
+Antes de apuntar el riel de pago a producción hay que cambiar estas variables en los hostings:
+
+### Vercel (frontend)
+| Variable | Valor actual (sandbox) | Valor PROD |
+|----------|----------------------|------------|
+| `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | `live_...` de sandbox | Client token de PROD en Paddle dashboard |
+| `NEXT_PUBLIC_PADDLE_PRICE_BASIC` | Price ID sandbox Basic | Price ID PROD Basic |
+| `NEXT_PUBLIC_PADDLE_PRICE_PRO` | Price ID sandbox Pro | Price ID PROD Pro |
+
+### Render (backend)
+| Variable | Valor actual (sandbox) | Valor PROD |
+|----------|----------------------|------------|
+| `PADDLE_WEBHOOK_SECRET` | Webhook secret sandbox | Webhook secret del endpoint PROD en Paddle dashboard |
+| `PADDLE_PRICE_BASIC` | Price ID sandbox Basic | Price ID PROD Basic |
+| `PADDLE_PRICE_PRO` | Price ID sandbox Pro | Price ID PROD Pro |
+| `PADDLE_API_KEY` | API key sandbox | API key de PROD |
+
+### Checklist antes del cambio
+- [ ] Crear productos + precios en Paddle PROD (mismos montos: Basic $9 / Pro $19 USD)
+- [ ] Registrar el webhook PROD apuntando a la URL de Render (`POST /paddle/webhook`) y anotar el secret
+- [ ] Verificar que los eventos `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled` estén activos en el webhook PROD
+- [ ] Actualizar las 4 variables en Vercel y las 4 en Render
+- [ ] Hacer un checkout de prueba en PROD para confirmar que el webhook llega y actualiza `profiles.subscription_plan`
+
+---
+
+*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-29 (Paddle sandbox activo, go-live PROD pendiente).*
