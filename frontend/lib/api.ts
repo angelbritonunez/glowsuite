@@ -35,6 +35,19 @@ export const getMe = async (token?: string, userId?: string): Promise<{ role: st
   return res.json()
 }
 
+// PADDLE
+export const getPaddlePortalUrl = async (): Promise<string> => {
+  const res = await fetch(`${API_URL}/paddle/portal`, {
+    headers: await getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Error generando portal de suscripción")
+  }
+  const data = await res.json()
+  return data.url
+}
+
 // CLIENTS
 export const createClient = async (data: {
   name: string

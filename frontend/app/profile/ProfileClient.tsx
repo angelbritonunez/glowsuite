@@ -3,8 +3,10 @@
 import { useEffect, useState, Suspense } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { Lock } from "lucide-react"
+import { Lock, ExternalLink } from "lucide-react"
 import { usePlan } from "@/hooks/usePlan"
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
+import { getPaddlePortalUrl } from "@/lib/api"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -73,8 +75,10 @@ function SaveButton({
 function ProfileContent() {
   const router        = useRouter()
   const { plan, can } = usePlan()
+  const { openCheckout } = usePaddleCheckout()
 
   const [loading, setLoading] = useState(true)
+  const [portalLoading, setPortalLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
   const [role, setRole] = useState<string>("consultora")
@@ -285,6 +289,18 @@ function ProfileContent() {
     router.push("/login")
   }
 
+  const handleOpenPortal = async () => {
+    setPortalLoading(true)
+    try {
+      const url = await getPaddlePortalUrl()
+      window.open(url, "_blank", "noopener,noreferrer")
+    } catch (err) {
+      alert((err as Error).message || "No se pudo abrir el portal de suscripción.")
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -354,29 +370,64 @@ function ProfileContent() {
               <span className="text-sm font-semibold text-gray-800">Mi suscripción</span>
               <p className="text-xs text-gray-400 mt-0.5">Tu plan actual de GlowSuite CRM</p>
             </div>
-            <div className="px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-2.5">
-                <span className={`rounded-full text-xs font-semibold px-2.5 py-1 ${
-                  plan === "pro"   ? "bg-[#FFF0F4] text-[#E75480]" :
-                  plan === "basic" ? "bg-blue-50 text-blue-600" :
-                                     "bg-gray-100 text-gray-500"
-                }`}>
-                  {plan === "pro" ? "Pro" : plan === "basic" ? "Basic" : "Free"}
-                </span>
-                <span className="text-sm text-gray-400">
-                  {plan === "pro" ? "$19/mes" : plan === "basic" ? "$9/mes" : "$0/mes"}
-                </span>
+            <div className="px-5 py-4 space-y-4">
+              {/* Plan info row */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2.5">
+                  <span className={`rounded-full text-xs font-semibold px-2.5 py-1 ${
+                    plan === "pro"   ? "bg-[#FFF0F4] text-[#E75480]" :
+                    plan === "basic" ? "bg-blue-50 text-blue-600" :
+                                       "bg-gray-100 text-gray-500"
+                  }`}>
+                    {plan === "pro" ? "Pro" : plan === "basic" ? "Basic" : "Free"}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    {plan === "pro" ? "$19/mes" : plan === "basic" ? "$9/mes" : "$0/mes"}
+                  </span>
+                </div>
+                {plan === "free" && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/planes")}
+                    className="shrink-0 bg-[#E75480] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[#d04070] transition"
+                  >
+                    Ver planes y hacer upgrade
+                  </button>
+                )}
+                {plan === "basic" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const priceId = process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO
+                      if (priceId) openCheckout(priceId)
+                    }}
+                    className="shrink-0 bg-[#E75480] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[#d04070] transition"
+                  >
+                    Cambiar a Pro
+                  </button>
+                )}
               </div>
-              {plan === "pro" ? (
-                <span className="text-sm text-gray-400">Estás en el plan más completo 🎉</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => router.push("/planes")}
-                  className="shrink-0 bg-[#E75480] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[#d04070] transition"
-                >
-                  Ver planes y hacer upgrade
-                </button>
+
+              {/* Portal / cancel row (Basic and Pro only) */}
+              {(plan === "basic" || plan === "pro") && (
+                <div className="flex items-center justify-between gap-4 pt-1 border-t border-gray-50">
+                  <p className="text-xs text-gray-400">
+                    Cancela o gestiona tu suscripción desde el portal de Paddle. La cancelación aplica al final del período actual.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleOpenPortal}
+                    disabled={portalLoading}
+                    className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition disabled:opacity-50"
+                  >
+                    {portalLoading ? "Abriendo..." : (
+                      <>
+                        Cancelar suscripción
+                        <ExternalLink size={11} />
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </div>
