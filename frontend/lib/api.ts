@@ -36,9 +36,9 @@ export const getMe = async (token?: string, userId?: string): Promise<{ role: st
 }
 
 // PADDLE
-export const getPaddlePortalUrl = async (): Promise<string> => {
+export const getPaddlePortalUrl = async (token?: string, userId?: string): Promise<string> => {
   const res = await fetch(`${API_URL}/paddle/portal`, {
-    headers: await getAuthHeaders(),
+    headers: await getAuthHeaders(false, token, userId),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

@@ -292,7 +292,13 @@ function ProfileContent() {
   const handleOpenPortal = async () => {
     setPortalLoading(true)
     try {
-      const url = await getPaddlePortalUrl()
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        alert("Tu sesión ha expirado. Vuelve a iniciar sesión.")
+        return
+      }
+      const url = await getPaddlePortalUrl(session.access_token, session.user.id)
       window.open(url, "_blank", "noopener,noreferrer")
     } catch (err) {
       alert((err as Error).message || "No se pudo abrir el portal de suscripción.")
