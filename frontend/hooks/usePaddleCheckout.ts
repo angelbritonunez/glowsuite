@@ -26,6 +26,9 @@ export function usePaddleCheckout() {
       customData: {
         user_id: user.id,
       },
+      settings: {
+        locale: 'es',
+      },
     });
   };
 
