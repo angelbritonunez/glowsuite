@@ -3,14 +3,14 @@
 import { usePathname } from "next/navigation"
 import Navbar from "@/components/Navbar"
 import { useAuth } from "@/hooks/useAuth"
+import { PUBLIC_ROUTES } from "@/lib/auth-config"
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, role } = useAuth()
   const pathname = usePathname()
 
-  const publicPages = ["/", "/terminos", "/privacidad", "/ayuda"]
-  const authPrefixes = ["/login", "/register", "/auth/"]
-  if (publicPages.includes(pathname) || authPrefixes.some((p) => pathname.startsWith(p))) {
+  const isPublic = PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))
+  if (isPublic) {
     return <>{children}</>
   }
 

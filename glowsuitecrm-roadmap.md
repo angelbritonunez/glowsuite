@@ -385,7 +385,7 @@ Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack 
 
 | # | Problema | Severidad | Estado | Detalle |
 |---|---------|-----------|--------|---------|
-| F1 | Dos fuentes de verdad para rutas públicas | Baja | 🔲 Pendiente | `ClientLayout.tsx` mantiene su propia lista de rutas (`publicPages` / `authPrefixes`) separada de `PUBLIC_ROUTES` en `lib/auth-config.ts`. Cada ruta pública nueva debe actualizarse en ambos lugares — causó bug en `/register/pendiente`. Solución: hacer que `ClientLayout` importe y derive su lógica de `PUBLIC_ROUTES`. |
+| F1 | Dos fuentes de verdad para rutas públicas | Baja | ✅ Resuelto | `ClientLayout.tsx` ahora importa `PUBLIC_ROUTES` de `lib/auth-config.ts` y deriva su lógica de ahí (`pathname === r \|\| pathname.startsWith(r + "/")`). Una sola fuente de verdad — agregar una ruta pública ya no requiere tocar dos archivos. |
 
 ---
 
