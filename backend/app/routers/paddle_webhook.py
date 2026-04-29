@@ -63,26 +63,37 @@ async def paddle_webhook(request: Request):
         return Response(status_code=200)
 
     if event_type in ("subscription.created", "subscription.activated", "subscription.updated"):
-        # subscription.created fires at the start of trial (status=trialing) or on immediate
-        # payment (status=active). Either way the user should have plan access immediately.
-        try:
-            price_id = data["items"][0]["price"]["id"]
-        except (KeyError, IndexError, TypeError):
-            logger.error("paddle_webhook: cannot read price_id from %s", event_type)
-            return Response(status_code=200)
-
-        plan = _resolve_plan(price_id)
-        if plan and user_id:
+        status = data.get("status")
+        # subscription.updated can arrive with status=canceled/past_due when the user cancels
+        # during trial — treat it as a downgrade without waiting for subscription.canceled.
+        if status in ("canceled", "past_due"):
             logger.info(
-                "paddle_webhook: updating user %s to plan=%s (event=%s, status=%s)",
-                user_id, plan, event_type, data.get("status"),
+                "paddle_webhook: %s with status=%s — downgrading user %s to free",
+                event_type, status, user_id,
             )
-            _update_plan(user_id, plan)
+            if user_id:
+                _update_plan(user_id, "free")
         else:
-            logger.warning(
-                "paddle_webhook: unrecognized price_id=%s or missing user_id=%s",
-                price_id, user_id,
-            )
+            # subscription.created fires at the start of trial (status=trialing) or on immediate
+            # payment (status=active). Either way the user should have plan access immediately.
+            try:
+                price_id = data["items"][0]["price"]["id"]
+            except (KeyError, IndexError, TypeError):
+                logger.error("paddle_webhook: cannot read price_id from %s", event_type)
+                return Response(status_code=200)
+
+            plan = _resolve_plan(price_id)
+            if plan and user_id:
+                logger.info(
+                    "paddle_webhook: updating user %s to plan=%s (event=%s, status=%s)",
+                    user_id, plan, event_type, status,
+                )
+                _update_plan(user_id, plan)
+            else:
+                logger.warning(
+                    "paddle_webhook: unrecognized price_id=%s or missing user_id=%s",
+                    price_id, user_id,
+                )
 
     elif event_type in ("subscription.canceled", "subscription.past_due"):
         if user_id:
