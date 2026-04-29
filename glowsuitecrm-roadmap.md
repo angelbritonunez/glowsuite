@@ -1,6 +1,6 @@
 # GlowSuite CRM — Roadmap de Producto
 
-**Última actualización:** 2026-04-28 (Paddle billing: webhook, /planes, profile Mi suscripción, UpgradeBanner CTA)
+**Última actualización:** 2026-04-29 (Paddle portal de cancelación, migración paddle_ids, locale español checkout)
 **Fase actual:** Piloto activo — Free disponible al público, Basic/Pro disponibles vía Paddle checkout
 
 ---
@@ -135,12 +135,18 @@ Self-service de suscripción. Las consultoras pueden comprar Basic o Pro directa
 - `app/profile/ProfileClient.tsx` — sección "Mi suscripción" debajo del header: plan + precio + botón upgrade.
 
 **Backend:**
-- `routers/paddle_webhook.py` — `POST /paddle/webhook`. Verificación HMAC-SHA256 con header `paddle-signature` (formato `ts=...;h1=...`). Eventos manejados: `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.past_due`. Actualiza `profiles.subscription_plan`.
-- `config.py` — nuevas vars: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`.
+- `routers/paddle_webhook.py` — `POST /paddle/webhook`. Verificación HMAC-SHA256 con header `paddle-signature` (formato `ts=...;h1=...`). Eventos manejados: `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.past_due`. Actualiza `profiles.subscription_plan` + guarda `paddle_customer_id` y `paddle_subscription_id`.
+- `GET /paddle/portal` — genera URL de sesión del portal Paddle para que la consultora gestione/cancele su suscripción. Requiere `paddle_customer_id` (404 si falta) y `paddle_subscription_id` (400 con mensaje de soporte si NULL).
+- `config.py` — vars: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`, `PADDLE_API_KEY`, `PADDLE_ENV`.
 
-**Env vars nuevas:**
+**DB:**
+- `profiles.paddle_customer_id TEXT` — ID del customer en Paddle. Se guarda en el webhook.
+- `profiles.paddle_subscription_id TEXT` — ID de la suscripción activa. Se guarda en el webhook.
+- Migración `add_paddle_ids_to_profiles` aplicada en DEV y PROD (2026-04-29).
+
+**Env vars:**
 - Frontend: `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_PADDLE_PRICE_BASIC`, `NEXT_PUBLIC_PADDLE_PRICE_PRO`
-- Backend: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`
+- Backend: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`, `PADDLE_API_KEY`, `PADDLE_ENV`
 
 ---
 

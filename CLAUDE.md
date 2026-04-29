@@ -92,7 +92,7 @@ Modular FastAPI app. `main.py` (47 lines) registers routers only. Routes have **
 | `routers/products.py` | GET `/products` |
 | `routers/auth.py` | GET `/auth/me` |
 | `routers/admin.py` | GET/POST/PATCH/DELETE `/admin/users`, GET `/admin/dashboard`, POST `/admin/users/{id}/reset-password` |
-| `routers/paddle_webhook.py` | POST `/paddle/webhook` |
+| `routers/paddle_webhook.py` | POST `/paddle/webhook`, GET `/paddle/portal` |
 
 `backend/app/db.py` — Supabase client using service key (bypasses RLS)
 `backend/app/config.py` — loads `SUPABASE_URL`, `SUPABASE_KEY`, `ALLOWED_ORIGIN`
@@ -127,7 +127,9 @@ Three tiers: `free` | `basic` | `pro`. Stored in `profiles.subscription_plan`.
 - **Plan colors:** Free → gray, Basic → blue, Pro → pink (`#E75480`)
 - **Feature matrix:** Free = clientes/ventas/seguimientos básicos; Basic adds crédito, ganancias, workspace; Pro adds métricas avanzadas, WhatsApp, link registro, agenda.
 - **`/planes`** — página de pricing (server wrapper + `PlanesClient.tsx`). 3 cards responsivas, botones llaman a `usePaddleCheckout()`. Basic tiene borde `#E75480` y badge "Más popular". Ruta en `ALLOWED_ROUTES` de consultora (autenticada, noindex).
-- **Paddle billing:** `hooks/usePaddleCheckout.ts` abre el checkout overlay. `lib/paddle.ts` inicializa Paddle.js sandbox/prod. Backend recibe eventos via `POST /paddle/webhook` (HMAC-SHA256, header `paddle-signature`).
+- **Paddle billing:** `hooks/usePaddleCheckout.ts` abre el checkout overlay con `settings: { locale: 'es' }`. `lib/paddle.ts` inicializa Paddle.js sandbox/prod. Backend recibe eventos via `POST /paddle/webhook` (HMAC-SHA256, header `paddle-signature`).
+- **Portal de suscripción:** `GET /paddle/portal` devuelve una URL de sesión del portal de Paddle para que la consultora cancele o gestione su suscripción. Requiere `paddle_customer_id` (404 si no existe) y `paddle_subscription_id` (400 con mensaje de soporte si es NULL) en `profiles`. El frontend lo llama desde `ProfileClient.tsx` y muestra errores inline (no `alert()`).
+- **`profiles.paddle_customer_id` / `profiles.paddle_subscription_id`:** columnas `TEXT` nullable. El webhook las guarda automáticamente en `subscription.created/activated/updated`. Migración `add_paddle_ids_to_profiles` aplicada en DEV y PROD (2026-04-29).
 - **Assignment:** auto vía Paddle checkout en `/planes` **o** manual por admin/operador desde `/operador/users`.
 
 ### Auth Flow
@@ -210,6 +212,8 @@ ALLOWED_ORIGIN=http://localhost:3000
 PADDLE_WEBHOOK_SECRET=<sandbox webhook secret>
 PADDLE_PRICE_BASIC=<sandbox price ID Basic>
 PADDLE_PRICE_PRO=<sandbox price ID Pro>
+PADDLE_API_KEY=<sandbox API key — para GET /paddle/portal>
+PADDLE_ENV=sandbox
 ```
 
 **Frontend PROD** (Vercel environment variables):
@@ -230,6 +234,8 @@ ALLOWED_ORIGIN=https://glowsuitecrm.com
 PADDLE_WEBHOOK_SECRET=<prod webhook secret — sin espacios ni saltos de línea>
 PADDLE_PRICE_BASIC=<prod price ID Basic>
 PADDLE_PRICE_PRO=<prod price ID Pro>
+PADDLE_API_KEY=<prod API key — para GET /paddle/portal>
+PADDLE_ENV=production
 ```
 
 ## Documentación del proyecto

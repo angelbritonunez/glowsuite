@@ -133,6 +133,7 @@ app.add_middleware(
 | POST | `/admin/users/{user_id}/reset-password` | Trigger password reset (admin) |
 | GET | `/admin/dashboard` | Admin dashboard stats |
 | POST | `/paddle/webhook` | Paddle subscription lifecycle events (HMAC-verified) |
+| GET | `/paddle/portal` | Genera URL de sesión del portal Paddle para gestión/cancelación |
 
 ---
 
@@ -155,6 +156,8 @@ SUPABASE_KEY
 PADDLE_WEBHOOK_SECRET
 PADDLE_PRICE_BASIC
 PADDLE_PRICE_PRO
+PADDLE_API_KEY        ← para GET /paddle/portal (llamada a Paddle API)
+PADDLE_ENV            ← "sandbox" | "production" (selecciona base URL de Paddle API)
 ```
 
 ### Code References
@@ -167,6 +170,8 @@ PADDLE_PRICE_PRO
 - `os.getenv("SUPABASE_KEY")` — `backend/app/config.py`
 - `os.getenv("PADDLE_WEBHOOK_SECRET")` — `backend/app/config.py`
 - `os.getenv("PADDLE_PRICE_BASIC/PRO")` — `backend/app/config.py`
+- `os.getenv("PADDLE_API_KEY")` — `backend/app/config.py`
+- `os.getenv("PADDLE_ENV")` — `backend/app/config.py`
 
 **Total external service dependencies:** 3
 - Supabase — DB, Auth, Storage
@@ -426,7 +431,7 @@ glowsuite/
 **Action required for Railway:**
 1. Create new Railway service pointing to `backend/` directory
 2. Set start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-3. Set env vars: `SUPABASE_URL`, `SUPABASE_KEY`
+3. Set env vars: `SUPABASE_URL`, `SUPABASE_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`, `PADDLE_API_KEY`, `PADDLE_ENV`
 4. Optionally add `railway.toml` for explicit config
 
 ---
@@ -442,4 +447,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-28 (Paddle billing: /planes, /paddle/webhook, env vars, deps). Previous update: 2026-04-28 (/register/pendiente). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-04-29 (portal Paddle: GET /paddle/portal, PADDLE_API_KEY, PADDLE_ENV, migración paddle_ids). Previous update: 2026-04-28 (Paddle billing). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
