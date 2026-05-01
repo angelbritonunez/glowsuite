@@ -1,7 +1,7 @@
 # GlowSuite CRM — Roadmap de Producto
 
-**Última actualización:** 2026-04-29 (Paddle portal de cancelación, migración paddle_ids, locale español checkout)
-**Fase actual:** Piloto activo — Free disponible al público, Basic/Pro disponibles vía Paddle checkout
+**Última actualización:** 2026-05-01 (Lemon Squeezy billing paralelo a Paddle — `feature/lemonsqueezy`)
+**Fase actual:** Piloto activo — Free disponible al público, Basic/Pro disponibles vía Paddle checkout (Lemon Squeezy en integración)
 
 ---
 
@@ -41,6 +41,7 @@
 | Panel de administración | ✅ Activo |
 | Planes Free/Basic/Pro | ✅ Activo |
 | Billing / Paddle checkout | ✅ Activo |
+| Billing / Lemon Squeezy checkout (paralelo) | 🔄 En progreso (`feature/lemonsqueezy`) |
 | SMTP branded (Resend) | ✅ Activo |
 | WhatsApp automático | ⏸ En pausa |
 | Agenda / reservas | 🔲 Pendiente |
@@ -62,9 +63,10 @@
 | Agenda / reservas | ❌ | ❌ | ✅ (próximamente) |
 
 **Precios:** Free $0 / Basic $9 USD / Pro $19 USD por mes
-**Checkout:** self-service vía Paddle en `/planes` (`usePaddleCheckout` → overlay). Webhook `POST /paddle/webhook` actualiza `profiles.subscription_plan` al recibir `subscription.activated` / `subscription.updated` / `subscription.canceled`.
+**Checkout:** self-service vía Paddle en `/planes` (`usePaddleCheckout` → overlay). Webhook `POST /paddle/webhook` actualiza `profiles.subscription_plan`. En paralelo: Lemon Squeezy vía Checkout Links (`useLemonCheckout` → `window.open`). Webhook `POST /lemonsqueezy/webhook` actualiza el mismo campo.
+**Detección de proveedor:** `PlanesClient.tsx` usa LS si `NEXT_PUBLIC_LS_CHECKOUT_BASIC/PRO` están presentes, sino Paddle. `/profile` usa LS si `ls_subscription_id` presente, sino Paddle.
 **Asignación manual:** admin/operador pueden cambiar el plan directamente desde `/operador/users` (override).
-**Piloto:** Basic y Pro disponibles vía Paddle checkout. Free siempre disponible.
+**Piloto:** Basic y Pro disponibles vía Paddle (sandbox). LS en `feature/lemonsqueezy`, pendiente de mergear.
 
 ---
 
@@ -147,6 +149,32 @@ Self-service de suscripción. Las consultoras pueden comprar Basic o Pro directa
 **Env vars:**
 - Frontend: `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_PADDLE_PRICE_BASIC`, `NEXT_PUBLIC_PADDLE_PRICE_PRO`
 - Backend: `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRICE_BASIC`, `PADDLE_PRICE_PRO`, `PADDLE_API_KEY`, `PADDLE_ENV`
+
+---
+
+### Feature 10b — Billing / Lemon Squeezy checkout 🔄 (`feature/lemonsqueezy`)
+
+Integración paralela a Paddle. Comparten el mismo campo `profiles.subscription_plan` y la misma UI de planes — solo cambia el proveedor de pago.
+
+**Frontend:**
+- `hooks/useLemonCheckout.ts` — construye `https://glowsuitecrm.lemonsqueezy.com/checkout/buy/{checkoutId}` a partir del UUID, agrega `checkout[custom][user_id]` y `checkout[email]`, abre en nueva pestaña.
+- `app/planes/PlanesClient.tsx` — detecta proveedor por presencia de `NEXT_PUBLIC_LS_CHECKOUT_BASIC/PRO`. Si están → LS; si no → Paddle.
+- `app/profile/ProfileClient.tsx` — botón "Cancelar suscripción" enruta a `GET /lemonsqueezy/portal` si `ls_subscription_id` presente, a `GET /paddle/portal` si no.
+
+**Backend:**
+- `routers/lemonsqueezy_webhook.py` — `POST /lemonsqueezy/webhook`: HMAC-SHA256 vía header `X-Signature`. Eventos de alta: `subscription_created/updated/resumed/plan_changed`. Eventos de baja: `subscription_cancelled/expired/payment_failed`. `user_id` en `meta.custom_data.user_id`. Logging detallado para debug.
+- `GET /lemonsqueezy/portal` — llama a `GET /v1/subscriptions/{ls_subscription_id}` con `LS_API_KEY` y devuelve `attributes.urls.customer_portal`.
+- `config.py` — vars: `LS_WEBHOOK_SECRET`, `LS_VARIANT_BASIC`, `LS_VARIANT_PRO`, `LS_API_KEY`.
+
+**DB:**
+- `profiles.ls_customer_id TEXT` — migración `add_lemonsqueezy_ids_to_profiles` aplicada en DEV (2026-05-01); **PROD pendiente al mergear**.
+- `profiles.ls_subscription_id TEXT` — ídem.
+
+**Checkout Links (UUIDs):** Basic `b66f6e42-4e45-4c71-8a85-a0e6cc0c604c` / Pro `f984587e-f775-43b3-8d55-cd18005b27db`
+**Variant IDs (para PLAN_MAP):** Basic `1599510` / Pro `1599556`
+
+**Env vars frontend:** `NEXT_PUBLIC_LS_CHECKOUT_BASIC`, `NEXT_PUBLIC_LS_CHECKOUT_PRO`
+**Env vars backend:** `LS_WEBHOOK_SECRET`, `LS_VARIANT_BASIC`, `LS_VARIANT_PRO`, `LS_API_KEY`
 
 ---
 
@@ -401,7 +429,7 @@ Re-auditada 2026-04-22. S1/S2/S3 confirmados resueltos o no aplicables al stack 
 
 ---
 
-## Pendientes de go-live a producción (Paddle)
+## Pendientes de go-live a producción
 
 Antes de apuntar el riel de pago a producción hay que cambiar estas variables en los hostings:
 
@@ -420,13 +448,21 @@ Antes de apuntar el riel de pago a producción hay que cambiar estas variables e
 | `PADDLE_PRICE_PRO` | Price ID sandbox Pro | Price ID PROD Pro |
 | `PADDLE_API_KEY` | API key sandbox | API key de PROD |
 
-### Checklist antes del cambio
+### Checklist — Paddle sandbox → producción
 - [ ] Crear productos + precios en Paddle PROD (mismos montos: Basic $9 / Pro $19 USD)
 - [ ] Registrar el webhook PROD apuntando a la URL de Render (`POST /paddle/webhook`) y anotar el secret
 - [ ] Verificar que los eventos `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled` estén activos en el webhook PROD
 - [ ] Actualizar las 4 variables en Vercel y las 4 en Render
 - [ ] Hacer un checkout de prueba en PROD para confirmar que el webhook llega y actualiza `profiles.subscription_plan`
 
+### Checklist — Lemon Squeezy (mergear `feature/lemonsqueezy` → `main`)
+- [ ] Aplicar migración `add_lemonsqueezy_ids_to_profiles` en PROD (`glowsuite` / `nmfszmssahhposvaodml`)
+- [ ] Registrar webhook LS apuntando a `POST /lemonsqueezy/webhook` en Render y copiar el secret
+- [ ] Agregar vars en Vercel: `NEXT_PUBLIC_LS_CHECKOUT_BASIC`, `NEXT_PUBLIC_LS_CHECKOUT_PRO`
+- [ ] Agregar vars en Render: `LS_WEBHOOK_SECRET`, `LS_VARIANT_BASIC`, `LS_VARIANT_PRO`, `LS_API_KEY`
+- [ ] Hacer checkout de prueba con LS y confirmar que webhook actualiza `profiles.subscription_plan` y guarda `ls_customer_id/subscription_id`
+- [ ] Confirmar que `GET /lemonsqueezy/portal` devuelve URL válida del customer portal
+
 ---
 
-*Documento generado por Claude Code — refleja el estado del branch `main` al 2026-04-29 (Paddle sandbox activo, go-live PROD pendiente).*
+*Documento actualizado por Claude Code — 2026-05-01 (Lemon Squeezy billing en `feature/lemonsqueezy`; Paddle sandbox activo en `main`).*

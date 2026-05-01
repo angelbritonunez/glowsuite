@@ -134,6 +134,8 @@ app.add_middleware(
 | GET | `/admin/dashboard` | Admin dashboard stats |
 | POST | `/paddle/webhook` | Paddle subscription lifecycle events (HMAC-verified) |
 | GET | `/paddle/portal` | Genera URL de sesión del portal Paddle para gestión/cancelación |
+| POST | `/lemonsqueezy/webhook` | Lemon Squeezy subscription lifecycle events (HMAC X-Signature) |
+| GET | `/lemonsqueezy/portal` | Llama a LS API y devuelve customer_portal URL |
 
 ---
 
@@ -147,6 +149,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
 NEXT_PUBLIC_PADDLE_PRICE_BASIC
 NEXT_PUBLIC_PADDLE_PRICE_PRO
+NEXT_PUBLIC_LS_CHECKOUT_BASIC   ← UUID del Checkout Link Basic de Lemon Squeezy
+NEXT_PUBLIC_LS_CHECKOUT_PRO     ← UUID del Checkout Link Pro de Lemon Squeezy
 ```
 
 ### Backend (`backend/.env`)
@@ -158,6 +162,10 @@ PADDLE_PRICE_BASIC
 PADDLE_PRICE_PRO
 PADDLE_API_KEY        ← para GET /paddle/portal (llamada a Paddle API)
 PADDLE_ENV            ← "sandbox" | "production" (selecciona base URL de Paddle API)
+LS_WEBHOOK_SECRET     ← para verificar HMAC de POST /lemonsqueezy/webhook
+LS_VARIANT_BASIC      ← variant ID de LS para PLAN_MAP del webhook
+LS_VARIANT_PRO        ← variant ID de LS para PLAN_MAP del webhook
+LS_API_KEY            ← para GET /lemonsqueezy/portal (llamada a LS API)
 ```
 
 ### Code References
@@ -166,17 +174,17 @@ PADDLE_ENV            ← "sandbox" | "production" (selecciona base URL de Paddl
 - `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY` — `frontend/lib/supabase/client.ts`
 - `process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` — `frontend/lib/paddle.ts`
 - `process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC/PRO` — `frontend/app/planes/PlanesClient.tsx`
+- `process.env.NEXT_PUBLIC_LS_CHECKOUT_BASIC/PRO` — `frontend/app/planes/PlanesClient.tsx`
 - `os.getenv("SUPABASE_URL")` — `backend/app/config.py`
 - `os.getenv("SUPABASE_KEY")` — `backend/app/config.py`
-- `os.getenv("PADDLE_WEBHOOK_SECRET")` — `backend/app/config.py`
-- `os.getenv("PADDLE_PRICE_BASIC/PRO")` — `backend/app/config.py`
-- `os.getenv("PADDLE_API_KEY")` — `backend/app/config.py`
-- `os.getenv("PADDLE_ENV")` — `backend/app/config.py`
+- `os.getenv("PADDLE_WEBHOOK_SECRET/PRICE_BASIC/PRICE_PRO/API_KEY/ENV")` — `backend/app/config.py`
+- `os.getenv("LS_WEBHOOK_SECRET/VARIANT_BASIC/VARIANT_PRO/API_KEY")` — `backend/app/config.py`
 
-**Total external service dependencies:** 3
+**Total external service dependencies:** 4
 - Supabase — DB, Auth, Storage
 - Resend — SMTP transaccional (`noreply@glowsuitecrm.com`) configurado en Supabase PROD
 - Paddle — billing y checkout (sandbox en DEV, prod en PROD)
+- Lemon Squeezy — billing paralelo a Paddle (`feature/lemonsqueezy`, pendiente de mergear a main)
 
 ---
 
@@ -276,8 +284,9 @@ glowsuite/
 │   │   │   ├── dashboard.py       (115 lines)
 │   │   │   ├── followups.py       (100 lines)
 │   │   │   ├── metrics.py         (298 lines)
-│   │   │   ├── paddle_webhook.py  (92 lines)
-│   │   │   ├── products.py        (10 lines)
+│   │   │   ├── paddle_webhook.py       (92 lines)
+│   │   │   ├── lemonsqueezy_webhook.py (100 lines — feature/lemonsqueezy)
+│   │   │   ├── products.py             (10 lines)
 │   │   │   └── sales.py           (292 lines)
 │   │   ├── services/
 │   │   │   ├── followup_service.py (119 lines)
@@ -357,6 +366,7 @@ glowsuite/
     │   ├── useAuth.ts
     │   ├── usePaddle.ts           (Paddle.js instance)
     │   ├── usePaddleCheckout.ts   (openCheckout helper)
+    │   ├── useLemonCheckout.ts    (Checkout Link → window.open — feature/lemonsqueezy)
     │   └── usePlan.ts
     ├── lib/
     │   ├── api.ts
@@ -447,4 +457,4 @@ glowsuite/
 
 ---
 
-*Report updated by Claude Code on 2026-04-29 (portal Paddle: GET /paddle/portal, PADDLE_API_KEY, PADDLE_ENV, migración paddle_ids). Previous update: 2026-04-28 (Paddle billing). Original generated 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*
+*Report updated by Claude Code on 2026-05-01 (Lemon Squeezy billing paralelo: endpoints, env vars, directorio — feature/lemonsqueezy). Previous: 2026-04-29 (Paddle portal). Original: 2026-04-09. Archivo: `glowsuitecrm-infra-report.md`*

@@ -93,6 +93,7 @@ Modular FastAPI app. `main.py` (47 lines) registers routers only. Routes have **
 | `routers/auth.py` | GET `/auth/me` |
 | `routers/admin.py` | GET/POST/PATCH/DELETE `/admin/users`, GET `/admin/dashboard`, POST `/admin/users/{id}/reset-password` |
 | `routers/paddle_webhook.py` | POST `/paddle/webhook`, GET `/paddle/portal` |
+| `routers/lemonsqueezy_webhook.py` | POST `/lemonsqueezy/webhook`, GET `/lemonsqueezy/portal` |
 
 `backend/app/db.py` — Supabase client using service key (bypasses RLS)
 `backend/app/config.py` — loads `SUPABASE_URL`, `SUPABASE_KEY`, `ALLOWED_ORIGIN`
@@ -128,9 +129,13 @@ Three tiers: `free` | `basic` | `pro`. Stored in `profiles.subscription_plan`.
 - **Feature matrix:** Free = clientes/ventas/seguimientos básicos; Basic adds crédito, ganancias, workspace; Pro adds métricas avanzadas, WhatsApp, link registro, agenda.
 - **`/planes`** — página de pricing (server wrapper + `PlanesClient.tsx`). 3 cards responsivas, botones llaman a `usePaddleCheckout()`. Basic tiene borde `#E75480` y badge "Más popular". Ruta en `ALLOWED_ROUTES` de consultora (autenticada, noindex).
 - **Paddle billing:** `hooks/usePaddleCheckout.ts` abre el checkout overlay con `settings: { locale: 'es' }`. `lib/paddle.ts` inicializa Paddle.js sandbox/prod. Backend recibe eventos via `POST /paddle/webhook` (HMAC-SHA256, header `paddle-signature`).
-- **Portal de suscripción:** `GET /paddle/portal` devuelve una URL de sesión del portal de Paddle para que la consultora cancele o gestione su suscripción. Requiere `paddle_customer_id` (404 si no existe) y `paddle_subscription_id` (400 con mensaje de soporte si es NULL) en `profiles`. El frontend lo llama desde `ProfileClient.tsx` y muestra errores inline (no `alert()`).
-- **`profiles.paddle_customer_id` / `profiles.paddle_subscription_id`:** columnas `TEXT` nullable. El webhook las guarda automáticamente en `subscription.created/activated/updated`. Migración `add_paddle_ids_to_profiles` aplicada en DEV y PROD (2026-04-29).
-- **Assignment:** auto vía Paddle checkout en `/planes` **o** manual por admin/operador desde `/operador/users`.
+- **Portal Paddle:** `GET /paddle/portal` devuelve URL de sesión del portal Paddle. Requiere `paddle_customer_id` (404 si no existe) y `paddle_subscription_id` (400 si NULL). Errores inline en `ProfileClient.tsx`.
+- **`profiles.paddle_customer_id` / `profiles.paddle_subscription_id`:** `TEXT` nullable. Migración `add_paddle_ids_to_profiles` aplicada en DEV y PROD (2026-04-29).
+- **Lemon Squeezy billing (paralelo):** `hooks/useLemonCheckout.ts` — recibe UUID del Checkout Link, construye URL internamente, abre en nueva pestaña (`window.open`). `NEXT_PUBLIC_LS_CHECKOUT_BASIC/PRO` guardan solo el UUID. Backend recibe eventos via `POST /lemonsqueezy/webhook` (HMAC-SHA256, header `X-Signature`).
+- **Portal LS:** `GET /lemonsqueezy/portal` llama a `GET /v1/subscriptions/{ls_subscription_id}` con `LS_API_KEY` y devuelve `attributes.urls.customer_portal`.
+- **`profiles.ls_customer_id` / `profiles.ls_subscription_id`:** `TEXT` nullable. Migración `add_lemonsqueezy_ids_to_profiles` aplicada en DEV (2026-05-01); **PROD pendiente al mergear `feature/lemonsqueezy`**.
+- **Detección de proveedor:** `PlanesClient.tsx` usa LS si `NEXT_PUBLIC_LS_CHECKOUT_BASIC/PRO` están presentes, sino Paddle. `ProfileClient.tsx` usa LS si `ls_subscription_id` presente, sino Paddle.
+- **Assignment:** auto vía Paddle o LS checkout en `/planes` **o** manual por admin/operador desde `/operador/users`.
 
 ### Auth Flow
 
@@ -202,6 +207,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite-dev>
 NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=<sandbox client token>
 NEXT_PUBLIC_PADDLE_PRICE_BASIC=<sandbox price ID Basic>
 NEXT_PUBLIC_PADDLE_PRICE_PRO=<sandbox price ID Pro>
+NEXT_PUBLIC_LS_CHECKOUT_BASIC=b66f6e42-4e45-4c71-8a85-a0e6cc0c604c
+NEXT_PUBLIC_LS_CHECKOUT_PRO=f984587e-f775-43b3-8d55-cd18005b27db
 ```
 
 **Backend DEV** (`backend/.env`):
@@ -214,6 +221,10 @@ PADDLE_PRICE_BASIC=<sandbox price ID Basic>
 PADDLE_PRICE_PRO=<sandbox price ID Pro>
 PADDLE_API_KEY=<sandbox API key — para GET /paddle/portal>
 PADDLE_ENV=sandbox
+LS_WEBHOOK_SECRET=<webhook secret de LS>
+LS_VARIANT_BASIC=1599510
+LS_VARIANT_PRO=1599556
+LS_API_KEY=<API key de Lemon Squeezy>
 ```
 
 **Frontend PROD** (Vercel environment variables):
@@ -224,6 +235,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key de glowsuite PROD>
 NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=<prod client token>
 NEXT_PUBLIC_PADDLE_PRICE_BASIC=<prod price ID Basic>
 NEXT_PUBLIC_PADDLE_PRICE_PRO=<prod price ID Pro>
+NEXT_PUBLIC_LS_CHECKOUT_BASIC=b66f6e42-4e45-4c71-8a85-a0e6cc0c604c
+NEXT_PUBLIC_LS_CHECKOUT_PRO=f984587e-f775-43b3-8d55-cd18005b27db
 ```
 
 **Backend PROD** (Render environment variables):
@@ -236,6 +249,10 @@ PADDLE_PRICE_BASIC=<prod price ID Basic>
 PADDLE_PRICE_PRO=<prod price ID Pro>
 PADDLE_API_KEY=<prod API key — para GET /paddle/portal>
 PADDLE_ENV=production
+LS_WEBHOOK_SECRET=<webhook secret de LS>
+LS_VARIANT_BASIC=1599510
+LS_VARIANT_PRO=1599556
+LS_API_KEY=<API key de Lemon Squeezy>
 ```
 
 ## Documentación del proyecto
