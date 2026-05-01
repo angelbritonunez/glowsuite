@@ -2,9 +2,10 @@ import hashlib
 import hmac
 import json
 import logging
+import httpx
 from fastapi import APIRouter, Request, HTTPException, Header
 from app.db import supabase
-from app.config import LS_WEBHOOK_SECRET, LS_VARIANT_BASIC, LS_VARIANT_PRO
+from app.config import LS_WEBHOOK_SECRET, LS_VARIANT_BASIC, LS_VARIANT_PRO, LS_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,25 @@ async def lemonsqueezy_portal(request: Request):
     ).eq("id", user_id).single().execute()
 
     profile = result.data
-    if not profile or not profile.get("ls_customer_id"):
-        raise HTTPException(status_code=404, detail="No Lemon Squeezy customer found")
+    if not profile or not profile.get("ls_subscription_id"):
+        raise HTTPException(status_code=404, detail="No active Lemon Squeezy subscription")
 
-    return {"url": "https://app.lemonsqueezy.com/my-orders"}
+    subscription_id = profile["ls_subscription_id"]
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription_id}",
+            headers={
+                "Authorization": f"Bearer {LS_API_KEY}",
+                "Accept": "application/vnd.api+json",
+            },
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Error fetching subscription from Lemon Squeezy")
+
+        portal_url = resp.json().get("data", {}).get("attributes", {}).get("urls", {}).get("customer_portal")
+
+    if not portal_url:
+        raise HTTPException(status_code=404, detail="Portal URL not available")
+
+    return {"url": portal_url}

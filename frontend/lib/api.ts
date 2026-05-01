@@ -48,6 +48,19 @@ export const getPaddlePortalUrl = async (token?: string, userId?: string): Promi
   return data.url
 }
 
+// LEMON SQUEEZY
+export const getLemonSqueezyPortalUrl = async (token?: string, userId?: string): Promise<string> => {
+  const res = await fetch(`${API_URL}/lemonsqueezy/portal`, {
+    headers: await getAuthHeaders(false, token, userId),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Error generando portal de Lemon Squeezy")
+  }
+  const data = await res.json()
+  return data.url
+}
+
 // CLIENTS
 export const createClient = async (data: {
   name: string

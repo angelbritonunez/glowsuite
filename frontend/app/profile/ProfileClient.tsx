@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Lock, ExternalLink } from "lucide-react"
 import { usePlan } from "@/hooks/usePlan"
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
-import { getPaddlePortalUrl } from "@/lib/api"
+import { getPaddlePortalUrl, getLemonSqueezyPortalUrl } from "@/lib/api"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -83,6 +83,8 @@ function ProfileContent() {
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
   const [role, setRole] = useState<string>("consultora")
+  const [lsSubscriptionId, setLsSubscriptionId] = useState<string | null>(null)
+  const [paddleSubscriptionId, setPaddleSubscriptionId] = useState<string | null>(null)
 
   // Personal info
   const [firstName, setFirstName] = useState("")
@@ -138,7 +140,7 @@ function ProfileContent() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("first_name, last_name, phone, monthly_goal, role")
+        .select("first_name, last_name, phone, monthly_goal, role, ls_subscription_id, paddle_subscription_id")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -156,6 +158,8 @@ function ProfileContent() {
       setMonthlyGoal(goal)
       setOriginalGoal(goal)
       setRole(profile?.role || "consultora")
+      setLsSubscriptionId(profile?.ls_subscription_id || null)
+      setPaddleSubscriptionId(profile?.paddle_subscription_id || null)
       setLoading(false)
     }
 
@@ -309,6 +313,25 @@ function ProfileContent() {
     }
   }
 
+  const handleOpenLsPortal = async () => {
+    setPortalLoading(true)
+    setPortalError(null)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setPortalError("Tu sesión ha expirado. Vuelve a iniciar sesión.")
+        return
+      }
+      const url = await getLemonSqueezyPortalUrl(session.access_token, session.user.id)
+      window.open(url, "_blank", "noopener,noreferrer")
+    } catch (err) {
+      setPortalError((err as Error).message || "No se pudo abrir el portal de suscripción.")
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -417,15 +440,15 @@ function ProfileContent() {
               </div>
 
               {/* Portal / cancel row (Basic and Pro only) */}
-              {(plan === "basic" || plan === "pro") && (
+              {(plan === "basic" || plan === "pro") && (lsSubscriptionId || paddleSubscriptionId) && (
                 <div className="pt-1 border-t border-gray-50 space-y-2">
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-xs text-gray-400">
-                      Cancela o gestiona tu suscripción desde el portal de Paddle. La cancelación aplica al final del período actual.
+                      Cancela o gestiona tu suscripción. La cancelación aplica al final del período actual.
                     </p>
                     <button
                       type="button"
-                      onClick={handleOpenPortal}
+                      onClick={lsSubscriptionId ? handleOpenLsPortal : handleOpenPortal}
                       disabled={portalLoading}
                       className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition disabled:opacity-50"
                     >
