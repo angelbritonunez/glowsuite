@@ -1,9 +1,12 @@
 import hashlib
 import hmac
 import json
+import logging
 from fastapi import APIRouter, Request, HTTPException, Header
 from app.db import supabase
 from app.config import LS_WEBHOOK_SECRET, LS_VARIANT_BASIC, LS_VARIANT_PRO
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -36,10 +39,18 @@ async def lemonsqueezy_webhook(
     attrs = data.get("attributes", {})
 
     user_id = payload.get("meta", {}).get("custom_data", {}).get("user_id")
+
+    logger.info(f"LS Webhook recibido — event: {event}")
+    logger.info(f"meta: {payload.get('meta', {})}")
+    logger.info(f"custom_data: {payload.get('meta', {}).get('custom_data', {})}")
+    logger.info(f"user_id extraído: {user_id}")
+
     if not user_id:
         return {"status": "ignored", "reason": "no user_id"}
 
     variant_id = str(attrs.get("variant_id", ""))
+
+    logger.info(f"variant_id: {variant_id}")
     ls_customer_id = str(attrs.get("customer_id", ""))
     ls_subscription_id = str(data.get("id", ""))
 
