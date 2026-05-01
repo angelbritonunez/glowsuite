@@ -71,9 +71,9 @@ const PLAN_BADGE: Record<SubscriptionPlan, string> = {
   pro:   "bg-[#FFF0F4] text-[#E75480]",
 }
 
-const LS_VARIANT_BASIC = process.env.NEXT_PUBLIC_LS_VARIANT_BASIC
-const LS_VARIANT_PRO   = process.env.NEXT_PUBLIC_LS_VARIANT_PRO
-const USE_LEMON = !!(LS_VARIANT_BASIC || LS_VARIANT_PRO)
+const LS_CHECKOUT_BASIC = process.env.NEXT_PUBLIC_LS_CHECKOUT_BASIC
+const LS_CHECKOUT_PRO   = process.env.NEXT_PUBLIC_LS_CHECKOUT_PRO
+const USE_LEMON = !!(LS_CHECKOUT_BASIC || LS_CHECKOUT_PRO)
 
 function getPaddlePriceId(planId: SubscriptionPlan): string | undefined {
   if (planId === "basic") return process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC
@@ -81,9 +81,9 @@ function getPaddlePriceId(planId: SubscriptionPlan): string | undefined {
   return undefined
 }
 
-function getLsVariantId(planId: SubscriptionPlan): string | undefined {
-  if (planId === "basic") return LS_VARIANT_BASIC
-  if (planId === "pro")   return LS_VARIANT_PRO
+function getLsCheckoutUrl(planId: SubscriptionPlan): string | undefined {
+  if (planId === "basic") return LS_CHECKOUT_BASIC
+  if (planId === "pro")   return LS_CHECKOUT_PRO
   return undefined
 }
 
@@ -98,8 +98,8 @@ export default function PlanesClient() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const variantId = getLsVariantId(planId)
-      if (variantId) openLemonCheckout(variantId, user.id, user.email ?? undefined)
+      const checkoutUrl = getLsCheckoutUrl(planId)
+      if (checkoutUrl) openLemonCheckout(checkoutUrl, user.id, user.email ?? undefined)
     } else {
       const priceId = getPaddlePriceId(planId)
       if (priceId) openPaddleCheckout(priceId)
