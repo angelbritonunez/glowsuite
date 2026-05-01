@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from app.db import supabase
 from app.config import ALLOWED_ORIGIN, SUPABASE_URL
 
-from app.routers import clients, products, sales, followups, metrics, dashboard, admin, auth, paddle_webhook, feature_flags
+from app.routers import clients, products, sales, followups, metrics, dashboard, admin, auth, paddle_webhook, feature_flags, lemonsqueezy_webhook
 
 app = FastAPI()
 
@@ -98,6 +98,7 @@ app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(paddle_webhook.router)
+app.include_router(lemonsqueezy_webhook.router)
 app.include_router(feature_flags.router)
 
 

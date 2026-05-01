@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import { DM_Sans } from "next/font/google"
+import Script from "next/script"
 import ClientLayout from "@/components/ClientLayout"
 import "./globals.css"
 
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: any) {
         <ClientLayout>
           {children}
         </ClientLayout>
+        <Script src="https://assets.lemonsqueezy.com/lemon.js" strategy="lazyOnload" />
       </body>
     </html>
   )

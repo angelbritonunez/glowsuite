@@ -3,8 +3,10 @@
 import { Check, Clock } from "lucide-react"
 import { usePlan } from "@/hooks/usePlan"
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
+import { useLemonCheckout } from "@/hooks/useLemonCheckout"
 import { useFeatureFlags } from "@/hooks/useFeatureFlags"
 import { FLAG_KEYS } from "@/lib/feature-flag-keys"
+import { createClient } from "@/lib/supabase"
 import type { SubscriptionPlan } from "@/types"
 
 interface PlanDef {
@@ -69,16 +71,40 @@ const PLAN_BADGE: Record<SubscriptionPlan, string> = {
   pro:   "bg-[#FFF0F4] text-[#E75480]",
 }
 
-function getPriceId(plan: PlanDef): string | undefined {
-  if (plan.id === "basic") return process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC
-  if (plan.id === "pro")   return process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO
+const LS_VARIANT_BASIC = process.env.NEXT_PUBLIC_LS_VARIANT_BASIC
+const LS_VARIANT_PRO   = process.env.NEXT_PUBLIC_LS_VARIANT_PRO
+const USE_LEMON = !!(LS_VARIANT_BASIC || LS_VARIANT_PRO)
+
+function getPaddlePriceId(planId: SubscriptionPlan): string | undefined {
+  if (planId === "basic") return process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC
+  if (planId === "pro")   return process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO
+  return undefined
+}
+
+function getLsVariantId(planId: SubscriptionPlan): string | undefined {
+  if (planId === "basic") return LS_VARIANT_BASIC
+  if (planId === "pro")   return LS_VARIANT_PRO
   return undefined
 }
 
 export default function PlanesClient() {
   const { plan: currentPlan, loading } = usePlan()
-  const { openCheckout } = usePaddleCheckout()
+  const { openCheckout: openPaddleCheckout } = usePaddleCheckout()
+  const { openCheckout: openLemonCheckout } = useLemonCheckout()
   const { isEnabled, loading: flagsLoading } = useFeatureFlags()
+
+  async function handleCheckout(planId: SubscriptionPlan) {
+    if (USE_LEMON) {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const variantId = getLsVariantId(planId)
+      if (variantId) openLemonCheckout(variantId, user.id, user.email ?? undefined)
+    } else {
+      const priceId = getPaddlePriceId(planId)
+      if (priceId) openPaddleCheckout(priceId)
+    }
+  }
 
   function isPlanAvailable(planId: SubscriptionPlan): boolean {
     if (planId === "basic") return isEnabled(FLAG_KEYS.PLAN_BASIC)
@@ -99,11 +125,9 @@ export default function PlanesClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {PLANS.map((p) => {
-          const isCurrent    = currentPlan === p.id
-          const priceId      = getPriceId(p)
-          const isPopular    = p.popular
-          const canUpgrade   = !isCurrent && p.id !== "free"
-          const planEnabled  = isPlanAvailable(p.id as SubscriptionPlan)
+          const isCurrent   = currentPlan === p.id
+          const isPopular   = p.popular
+          const planEnabled = isPlanAvailable(p.id as SubscriptionPlan)
 
           return (
             <div
@@ -167,8 +191,8 @@ export default function PlanesClient() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => priceId && openCheckout(priceId)}
-                      disabled={!priceId || loading}
+                      onClick={() => handleCheckout(p.id as SubscriptionPlan)}
+                      disabled={loading}
                       className={`w-full rounded-xl py-2.5 text-sm font-semibold transition ${
                         isPopular
                           ? "bg-[#E75480] text-white hover:bg-[#d04070] disabled:bg-[#E75480]/40"
